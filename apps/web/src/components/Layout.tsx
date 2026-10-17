@@ -3,6 +3,10 @@ import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { ME_KEY, signOut, useMe } from '../api/auth';
 import { useLists } from '../api/tasks';
+import { QuickAdd } from './QuickAdd';
+
+/** Pages that show the quick-add bar. */
+const QUICK_ADD_PAGES = ['/today', '/overdue', '/calendar', '/all'];
 
 const NAV = [
   { to: '/today', label: 'Today' },
@@ -108,6 +112,7 @@ export function Layout() {
         <main
           className={`mx-auto w-full flex-1 px-4 py-6 md:px-8 ${location.pathname === '/calendar' ? 'max-w-7xl' : 'max-w-4xl'}`}
         >
+          {QUICK_ADD_PAGES.includes(location.pathname) && <QuickAdd />}
           <Outlet />
         </main>
       </div>

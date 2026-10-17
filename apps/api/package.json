@@ -21,6 +21,7 @@
     "@prisma/client": "~7.10.1",
     "@todo/shared": "workspace:*",
     "better-auth": "^1.7.10",
+    "chrono-node": "^2.10.3",
     "fastify": "^5.12.7",
     "luxon": "^3.7.2",
     "nodemailer": "^10.1.2",

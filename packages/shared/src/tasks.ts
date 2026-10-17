@@ -139,3 +139,30 @@ export const SNOOZE_LABEL: Record<SnoozeOption, string> = {
   '1h': '1 hour',
   tomorrow: 'Tomorrow 9:00',
 };
+
+export const PARSE_TEXT_MAX = 500;
+
+export const parseTaskRequestSchema = z.object({
+  text: z.string().trim().min(1, 'Type something to add').max(PARSE_TEXT_MAX),
+});
+export type ParseTaskRequest = z.infer<typeof parseTaskRequestSchema>;
+
+/** A task draft from quick add. Not saved: the client confirms (and may edit) it first. */
+export const taskDraftSchema = z.object({
+  title: z.string(),
+  notes: z.string().nullable(),
+  dueAt: z.iso.datetime().nullable(),
+  dueAllDay: z.boolean(),
+  remindAt: z.iso.datetime().nullable(),
+  priority: prioritySchema,
+  recurrence: recurrenceSchema,
+  listId: z.string().nullable(),
+});
+export type TaskDraft = z.infer<typeof taskDraftSchema>;
+
+export const parseTaskResponseSchema = z.object({
+  draft: taskDraftSchema,
+  /** The phrases that were understood (e.g. "tomorrow at 5pm", "urgent"), for display. */
+  recognized: z.array(z.string()),
+});
+export type ParseTaskResponse = z.infer<typeof parseTaskResponseSchema>;

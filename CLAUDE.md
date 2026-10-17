@@ -81,6 +81,8 @@ Run from the repo root (local Postgres must be up: `pnpm db:up`).
 - Shared time helpers (`packages/shared/src/time.ts`, luxon) convert local date/time ⇄ UTC in the user's timezone; the web editor uses them with `me.timezone` (not the browser's zone).
 - Calendar: `GET /api/tasks/calendar` (per-day counts by local date) + `GET /api/tasks/day`. Weeks start on Monday. URL state `/calendar?month=yyyy-MM&day=yyyy-MM-dd`.
 - Snooze (`src/tasks/snooze.ts`) only sets `remindAt`. Phase 6 must also reschedule the pg-boss job there.
+- Quick add: `src/parse/parser.ts` is a pure function (`parseTaskText(text, { now, timezone, lists })`) using chrono-node (custom parser for "the 15th") + keyword rules; every rule change needs a case in `parser.test.ts`. chrono gets the user's current UTC offset as its reference, and the local date/time fields it returns are rebuilt in the IANA zone with luxon (DST-safe). `POST /api/tasks/parse` never saves.
+- Web quick add: `components/QuickAdd.tsx` (bar + confirmation card reusing `TaskForm`), `hooks/useSpeechRecognition.ts` (Web Speech API; mic hidden with a note when unsupported).
 - Empty states: `apps/web/src/components/EmptyState.tsx` (original inline SVGs; "free day" variation picked by a date seed).
 - Web: TanStack Query; task/list mutations invalidate `['tasks']` and `['lists']`. `useTaskEditor()` opens the create/edit modal.
 - Web: TanStack Query; `useMe()` is the auth state (null = signed out). Any 401 sets it to null, which sends the user to /login.

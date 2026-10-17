@@ -9,3 +9,4 @@ apps/api/src/generated/
 backups/
 .DS_Store
 .claude/settings.local.json
+.tmp/

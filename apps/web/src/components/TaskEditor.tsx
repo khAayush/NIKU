@@ -9,8 +9,9 @@ import {
   type Priority,
   type Recurrence,
   type Task,
+  type TaskDraft,
 } from '@todo/shared';
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { useMe } from '../api/auth';
 import { useCreateTask, useDeleteTask, useLists, useUpdateTask } from '../api/tasks';
 import { PRIORITY_LABEL, RECURRENCE_LABEL } from '../lib/format';
@@ -34,7 +35,13 @@ export interface TaskDefaults {
   listId?: string | null;
 }
 
-function initialValues(task: Task | null, tz: string, defaults: TaskDefaults): FormValues {
+/** Fields shared by saved tasks and quick-add drafts. */
+type TaskFields = Pick<
+  TaskDraft,
+  'title' | 'notes' | 'dueAt' | 'dueAllDay' | 'remindAt' | 'priority' | 'recurrence' | 'listId'
+>;
+
+function initialValues(task: TaskFields | null, tz: string, defaults: TaskDefaults): FormValues {
   if (!task) {
     return {
       title: '',
@@ -94,7 +101,7 @@ function toInput(
   };
 }
 
-/** Create or edit a task. Pass `task` to edit. */
+/** Create or edit a task in a modal. Pass `task` to edit. */
 export function TaskEditor({
   task,
   defaults = {},
@@ -104,9 +111,38 @@ export function TaskEditor({
   defaults?: TaskDefaults;
   onClose: () => void;
 }) {
+  return (
+    <Modal title={task ? 'Edit task' : 'New task'} onClose={onClose}>
+      <TaskForm task={task} defaults={defaults} onDone={onClose} />
+    </Modal>
+  );
+}
+
+/**
+ * The task form. Edits `task` when given; otherwise creates a task, prefilled from `draft`
+ * (quick add) or `defaults`. Calls `onDone` after deleting or cancelling, and `onSaved`
+ * (falling back to `onDone`) after saving.
+ */
+export function TaskForm({
+  task = null,
+  draft = null,
+  defaults = {},
+  onDone,
+  onSaved,
+  submitLabel,
+}: {
+  task?: Task | null;
+  draft?: TaskDraft | null;
+  defaults?: TaskDefaults;
+  onDone: () => void;
+  onSaved?: () => void;
+  submitLabel?: string;
+}) {
   const tz = useMe().data!.timezone;
+  const notesId = useId();
+  const onClose = onDone;
   const { data: lists = [] } = useLists();
-  const [values, setValues] = useState(() => initialValues(task, tz, defaults));
+  const [values, setValues] = useState(() => initialValues(task ?? draft, tz, defaults));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -129,7 +165,7 @@ export function TaskEditor({
     try {
       if (task) await updateTask.mutateAsync({ id: task.id, input });
       else await createTask.mutateAsync(input);
-      onClose();
+      (onSaved ?? onDone)();
     } catch (err) {
       setFormError(errorMessage(err));
     }
@@ -146,130 +182,128 @@ export function TaskEditor({
   }
 
   return (
-    <Modal title={task ? 'Edit task' : 'New task'} onClose={onClose}>
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
-        {formError && <Alert>{formError}</Alert>}
-        <Field
-          label="Title"
-          value={values.title}
-          onChange={(e) => set('title', e.target.value)}
-          error={errors.title}
-          maxLength={200}
-          autoFocus
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      {formError && <Alert>{formError}</Alert>}
+      <Field
+        label="Title"
+        value={values.title}
+        onChange={(e) => set('title', e.target.value)}
+        error={errors.title}
+        maxLength={200}
+        autoFocus
+      />
+      <div>
+        <label className="block text-sm font-medium text-slate-700" htmlFor={notesId}>
+          Notes
+        </label>
+        <textarea
+          id={notesId}
+          rows={3}
+          value={values.notes}
+          onChange={(e) => set('notes', e.target.value)}
+          className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:outline-none"
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field
+          label="Due date"
+          type="date"
+          value={values.dueDate}
+          onChange={(e) => set('dueDate', e.target.value)}
+          error={errors.dueAt}
+        />
+        <Field
+          label="Due time"
+          type="time"
+          value={values.dueTime}
+          onChange={(e) => set('dueTime', e.target.value)}
+          hint={values.dueDate && !values.dueTime ? 'All day' : undefined}
+        />
+        <Field
+          label="Reminder date"
+          type="date"
+          value={values.remindDate}
+          onChange={(e) => set('remindDate', e.target.value)}
+          error={errors.remindAt}
+        />
+        <Field
+          label="Reminder time"
+          type="time"
+          value={values.remindTime}
+          onChange={(e) => set('remindTime', e.target.value)}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <SelectField
+          label="Priority"
+          value={values.priority}
+          onChange={(e) => set('priority', e.target.value as Priority)}
+        >
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p}>
+              {PRIORITY_LABEL[p]}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField
+          label="List"
+          value={values.listId}
+          onChange={(e) => set('listId', e.target.value)}
+        >
+          <option value="">No list</option>
+          {lists.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField
+          label="Repeat"
+          value={values.recurrence}
+          onChange={(e) => set('recurrence', e.target.value as Recurrence)}
+          error={errors.recurrence}
+        >
+          {RECURRENCES.map((r) => (
+            <option key={r} value={r}>
+              {RECURRENCE_LABEL[r]}
+            </option>
+          ))}
+        </SelectField>
+      </div>
+      {values.priority !== 'LOW' && !values.dueDate && !errors.dueAt && (
+        <p className="text-xs text-slate-500">A due date is needed unless priority is Low.</p>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700" htmlFor="task-notes">
-            Notes
-          </label>
-          <textarea
-            id="task-notes"
-            rows={3}
-            value={values.notes}
-            onChange={(e) => set('notes', e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:outline-none"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field
-            label="Due date"
-            type="date"
-            value={values.dueDate}
-            onChange={(e) => set('dueDate', e.target.value)}
-            error={errors.dueAt}
-          />
-          <Field
-            label="Due time"
-            type="time"
-            value={values.dueTime}
-            onChange={(e) => set('dueTime', e.target.value)}
-            hint={values.dueDate && !values.dueTime ? 'All day' : undefined}
-          />
-          <Field
-            label="Reminder date"
-            type="date"
-            value={values.remindDate}
-            onChange={(e) => set('remindDate', e.target.value)}
-            error={errors.remindAt}
-          />
-          <Field
-            label="Reminder time"
-            type="time"
-            value={values.remindTime}
-            onChange={(e) => set('remindTime', e.target.value)}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <SelectField
-            label="Priority"
-            value={values.priority}
-            onChange={(e) => set('priority', e.target.value as Priority)}
-          >
-            {PRIORITIES.map((p) => (
-              <option key={p} value={p}>
-                {PRIORITY_LABEL[p]}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField
-            label="List"
-            value={values.listId}
-            onChange={(e) => set('listId', e.target.value)}
-          >
-            <option value="">No list</option>
-            {lists.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField
-            label="Repeat"
-            value={values.recurrence}
-            onChange={(e) => set('recurrence', e.target.value as Recurrence)}
-            error={errors.recurrence}
-          >
-            {RECURRENCES.map((r) => (
-              <option key={r} value={r}>
-                {RECURRENCE_LABEL[r]}
-              </option>
-            ))}
-          </SelectField>
-        </div>
-        {values.priority !== 'LOW' && !values.dueDate && !errors.dueAt && (
-          <p className="text-xs text-slate-500">A due date is needed unless priority is Low.</p>
-        )}
-
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-          <div>
-            {task &&
-              (confirmDelete ? (
-                <span className="flex items-center gap-2 text-sm">
-                  Delete this task?
-                  <Button type="button" variant="danger" onClick={onDelete} disabled={busy}>
-                    Delete
-                  </Button>
-                  <Button type="button" variant="secondary" onClick={() => setConfirmDelete(false)}>
-                    Keep
-                  </Button>
-                </span>
-              ) : (
-                <Button type="button" variant="secondary" onClick={() => setConfirmDelete(true)}>
+          {task &&
+            (confirmDelete ? (
+              <span className="flex items-center gap-2 text-sm">
+                Delete this task?
+                <Button type="button" variant="danger" onClick={onDelete} disabled={busy}>
                   Delete
                 </Button>
-              ))}
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={busy}>
-              {busy ? 'Saving…' : task ? 'Save' : 'Add task'}
-            </Button>
-          </div>
+                <Button type="button" variant="secondary" onClick={() => setConfirmDelete(false)}>
+                  Keep
+                </Button>
+              </span>
+            ) : (
+              <Button type="button" variant="secondary" onClick={() => setConfirmDelete(true)}>
+                Delete
+              </Button>
+            ))}
         </div>
-      </form>
-    </Modal>
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {busy ? 'Saving…' : (submitLabel ?? (task ? 'Save' : 'Add task'))}
+          </Button>
+        </div>
+      </div>
+    </form>
   );
 }

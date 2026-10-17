@@ -233,6 +233,49 @@ due today in the user's timezone (including completed ones) that aren't in `over
 
 **200** `{ "items": [Task] }` — all open tasks past their due date.
 
+### `POST /api/tasks/parse`
+
+Quick add: turns a sentence into a task **draft**. Nothing is saved — show the draft for
+confirmation, then `POST /api/tasks` with it (edited as needed).
+
+```json
+{ "text": "Submit report tomorrow at 5pm urgent" }
+```
+
+`text`: 1–500 characters. **200**:
+
+```json
+{
+  "draft": {
+    "title": "Submit report",
+    "notes": null,
+    "dueAt": "2026-10-18T16:00:00.000Z",
+    "dueAllDay": false,
+    "remindAt": null,
+    "priority": "HIGH",
+    "recurrence": "NONE",
+    "listId": null
+  },
+  "recognized": ["tomorrow at 5pm", "urgent"]
+}
+```
+
+What it understands (dates are read on the user's local calendar, in their timezone):
+
+| Kind                        | Examples                                                                                                           | Result                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Dates / times (chrono-node) | "tomorrow at 5pm", "next Friday", "Oct 31", "in 2 hours", "noon tomorrow", "on the 1st"                            | `dueAt`; without a time → `dueAllDay: true`                                           |
+| Times of day                | "this morning" 9:00, "afternoon" 14:00, "evening" 18:00, "tonight" 20:00                                           | timed `dueAt`                                                                         |
+| Past bare times             | "at 9" said at 10pm                                                                                                | tomorrow 9:00                                                                         |
+| High priority               | "urgent", "important", "asap", "high priority", "!!"                                                               | `HIGH`                                                                                |
+| Low priority                | "low priority", "not urgent", "no rush", "whenever"                                                                | `LOW`                                                                                 |
+| Recurrence                  | "every day"/"daily", "every week"/"weekly", "every month"/"monthly", "every Monday", "on Mondays", "every morning" | `DAILY` / `WEEKLY` / `MONTHLY` (first due date = next matching day; today if no date) |
+| Lists (the user's own)      | "#work", "in my Work list", "for groceries", "Groceries list"                                                      | `listId`                                                                              |
+| Reminder                    | "remind me to …"                                                                                                   | `remindAt` = due time (9:00 for all-day)                                              |
+
+Recognized phrases are removed from the title. Numeric dates like "3/11" use US order
+(month/day). **400** `VALIDATION_ERROR` for empty or too-long text.
+
 ### `GET /api/tasks/:id`
 
 **200** Task, **404** `NOT_FOUND` (also for other users' tasks).

@@ -8,6 +8,7 @@ import { env } from './lib/env.js';
 import { registerErrorHandlers } from './lib/errors.js';
 import { logger } from './lib/logger.js';
 import { listRoutes } from './lists/routes.js';
+import { parseRoutes } from './parse/routes.js';
 import { taskRoutes } from './tasks/routes.js';
 import { userRoutes } from './users/routes.js';
 
@@ -33,6 +34,7 @@ export async function buildApp() {
         protectedApi.addHook('preHandler', authenticate);
         await protectedApi.register(userRoutes);
         await protectedApi.register(listRoutes);
+        await protectedApi.register(parseRoutes);
         await protectedApi.register(taskRoutes);
       });
     },
