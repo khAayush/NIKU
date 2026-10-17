@@ -1,0 +1,157 @@
+// Better Auth tables (User, Session, Account, Verification) were generated with `auth generate`
+// and extended with app fields. Keep their field names: Better Auth relies on them.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Recurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum TaskStatus {
+  OPEN
+  COMPLETED
+}
+
+model List {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  tasks     Task[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([userId, name])
+  @@map("list")
+}
+
+model Task {
+  id                    String     @id @default(uuid())
+  userId                String
+  user                  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listId                String?
+  /// Deleting a list moves its tasks to "no list".
+  list                  List?      @relation(fields: [listId], references: [id], onDelete: SetNull)
+  title                 String     @db.VarChar(200)
+  notes                 String?
+  dueAt                 DateTime?  @db.Timestamptz(3)
+  /// Next time the reminder fires (moves when snoozed).
+  remindAt              DateTime?  @db.Timestamptz(3)
+  /// Minutes before dueAt the reminder is set; kept across recurrences. Null when there is no due date.
+  reminderOffsetMinutes Int?
+  priority              Priority   @default(MEDIUM)
+  recurrence            Recurrence @default(NONE)
+  /// Original day of month for MONTHLY recurrence, so short months don't cause drift.
+  recurrenceDay         Int?
+  status                TaskStatus @default(OPEN)
+  completedAt           DateTime?  @db.Timestamptz(3)
+  createdAt             DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime   @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, status, dueAt])
+  @@index([userId, listId])
+  @@index([remindAt])
+  @@map("task")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("push_subscription")
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+  sessions      Session[]
+  accounts      Account[]
+
+  // App fields (registered as Better Auth additionalFields in Phase 2)
+  /// IANA timezone, e.g. "Europe/London". All stored times are UTC.
+  timezone          String             @default("UTC")
+  notifyInApp       Boolean            @default(true)
+  notifyPush        Boolean            @default(false)
+  notifyEmail       Boolean            @default(true)
+  lists             List[]
+  tasks             Task[]
+  pushSubscriptions PushSubscription[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime @db.Timestamptz(3)
+  token     String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verification")
+}

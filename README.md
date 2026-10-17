@@ -1,0 +1,58 @@
+# Tasks
+
+Personal task & reminder web app. See [SPEC.md](SPEC.md) for requirements and [API.md](API.md) for the API.
+
+## Stack
+
+pnpm monorepo · TypeScript · Fastify + Prisma (PostgreSQL) API · React + Vite + Tailwind web app · Zod schemas shared in `packages/shared` · Vitest.
+
+```
+apps/api          REST API under /api (all business logic)
+apps/web          React web client
+packages/shared   Zod schemas and types shared by api and web
+```
+
+## Prerequisites
+
+- Node.js 22.18+ (`node -v`)
+- pnpm 12 (`corepack enable` or `npm i -g pnpm`)
+- Docker Desktop (for local PostgreSQL)
+
+## First-time setup
+
+```bash
+pnpm install
+cp .env.example .env
+pnpm db:up                                # start Postgres in Docker (creates todo and todo_test DBs)
+pnpm --filter @todo/api db:generate      # generate the Prisma client
+pnpm --filter @todo/api db:migrate       # apply migrations to the dev database
+```
+
+## Run locally
+
+```bash
+pnpm dev
+```
+
+- Web app: http://localhost:5173 (proxies `/api` to the API)
+- API: http://localhost:3000 — try http://localhost:5173/api/health
+
+The footer of the web app shows whether it can reach the API.
+
+## Common commands
+
+| Command                              | What it does                                           |
+| ------------------------------------ | ------------------------------------------------------ |
+| `pnpm dev`                           | Run API (auto-restart) and web app (hot reload)        |
+| `pnpm test`                          | Run all tests (API tests use the `todo_test` database) |
+| `pnpm typecheck`                     | Type-check every package                               |
+| `pnpm lint` / `pnpm format`          | ESLint / Prettier                                      |
+| `pnpm db:up` / `pnpm db:down`        | Start / stop local Postgres                            |
+| `pnpm --filter @todo/api db:migrate` | Create/apply a migration after editing `schema.prisma` |
+| `pnpm --filter @todo/api db:studio`  | Browse the database                                    |
+
+## Changing the database schema
+
+1. Edit `apps/api/prisma/schema.prisma`.
+2. `pnpm --filter @todo/api db:migrate --name describe_change`
+3. `pnpm --filter @todo/api db:generate`

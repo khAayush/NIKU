@@ -1,0 +1,23 @@
+# Local development only: Postgres for the API and tests.
+# Production uses docker-compose.prod.yml (Phase 7).
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: todo
+      POSTGRES_PASSWORD: todo
+      POSTGRES_DB: todo
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - db-data:/var/lib/postgresql
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U todo -d todo']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:
