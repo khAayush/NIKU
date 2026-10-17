@@ -50,7 +50,10 @@ model Task {
   list                  List?      @relation(fields: [listId], references: [id], onDelete: SetNull)
   title                 String     @db.VarChar(200)
   notes                 String?
+  /// For all-day tasks: the start of that day in the user's timezone.
   dueAt                 DateTime?  @db.Timestamptz(3)
+  /// Due on a date without a specific time.
+  dueAllDay             Boolean    @default(false)
   /// Next time the reminder fires (moves when snoozed).
   remindAt              DateTime?  @db.Timestamptz(3)
   /// Minutes before dueAt the reminder is set; kept across recurrences. Null when there is no due date.

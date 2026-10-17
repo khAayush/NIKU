@@ -1,5 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { Layout } from './components/Layout';
+import { AllTasksPage } from './pages/AllTasksPage';
+import { ListsPage } from './pages/ListsPage';
+import { OverduePage } from './pages/OverduePage';
+import { TodayPage } from './pages/TodayPage';
 import { RedirectIfSignedIn, RequireAuth } from './components/RouteGuards';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { LoginPage } from './pages/LoginPage';
@@ -22,10 +26,11 @@ export function App() {
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
           <Route index element={<Navigate to="/today" replace />} />
-          <Route path="today" element={<PlaceholderPage title="Today" />} />
-          <Route path="overdue" element={<PlaceholderPage title="Overdue" />} />
+          <Route path="today" element={<TodayPage />} />
+          <Route path="overdue" element={<OverduePage />} />
           <Route path="calendar" element={<PlaceholderPage title="Calendar" />} />
-          <Route path="all" element={<PlaceholderPage title="All tasks" />} />
+          <Route path="all" element={<AllTasksPage />} />
+          <Route path="lists" element={<ListsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<PlaceholderPage title="Page not found" />} />
         </Route>

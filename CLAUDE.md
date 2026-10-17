@@ -75,6 +75,11 @@ Run from the repo root (local Postgres must be up: `pnpm db:up`).
 - Protected routes are registered inside the `protectedApi` scope in `src/app.ts`.
 - Better Auth `/update-user` is disabled; profile changes go through `PATCH /api/me`.
 - Email: `src/lib/mailer.ts`. Without SMTP config, mail goes to an in-memory `outbox` (tests read it) and is logged in development.
+- Tasks: `src/tasks/service.ts` (CRUD, Today/Overdue queries, complete/reopen), `src/tasks/recurrence.ts` (pure `nextOccurrence`, luxon, fully unit-tested). Every query filters by `userId`; other users' resources are 404.
+- `reminderOffsetMinutes` is recomputed only when the user edits `dueAt`/`dueAllDay`/`remindAt` (snoozes must not change it). `recurrenceDay` is set by the server for MONTHLY.
+- All-day tasks: `dueAllDay=true`, `dueAt` = start of that local day (normalized server-side).
+- Shared time helpers (`packages/shared/src/time.ts`, luxon) convert local date/time ⇄ UTC in the user's timezone; the web editor uses them with `me.timezone` (not the browser's zone).
+- Web: TanStack Query; task/list mutations invalidate `['tasks']` and `['lists']`. `useTaskEditor()` opens the create/edit modal.
 - Web: TanStack Query; `useMe()` is the auth state (null = signed out). Any 401 sets it to null, which sends the user to /login.
 
 ## Testing

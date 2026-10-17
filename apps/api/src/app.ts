@@ -7,6 +7,8 @@ import { healthRoutes } from './health/routes.js';
 import { env } from './lib/env.js';
 import { registerErrorHandlers } from './lib/errors.js';
 import { logger } from './lib/logger.js';
+import { listRoutes } from './lists/routes.js';
+import { taskRoutes } from './tasks/routes.js';
 import { userRoutes } from './users/routes.js';
 
 /** Builds the Fastify app without listening, so tests can use `app.inject`. */
@@ -30,6 +32,8 @@ export async function buildApp() {
       await api.register(async (protectedApi) => {
         protectedApi.addHook('preHandler', authenticate);
         await protectedApi.register(userRoutes);
+        await protectedApi.register(listRoutes);
+        await protectedApi.register(taskRoutes);
       });
     },
     { prefix: '/api' },

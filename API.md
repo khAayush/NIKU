@@ -158,3 +158,128 @@ Updates any of `name`, `timezone`. Other fields are ignored.
 
 - **200** the updated profile (same shape as `GET /api/me`).
 - **400** `VALIDATION_ERROR` (e.g. unknown timezone).
+
+---
+
+## Lists (`/api/lists`) — requires a session
+
+A list object:
+
+```json
+{ "id": "uuid", "name": "Work", "openTaskCount": 3 }
+```
+
+| Method & path           | Body                   | Success                                       | Errors                                                                        |
+| ----------------------- | ---------------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
+| `GET /api/lists`        | —                      | **200** `{ "items": [...] }` (sorted by name) |                                                                               |
+| `POST /api/lists`       | `{ "name": "Work" }`   | **201** the list                              | 400 `VALIDATION_ERROR` (1–50 chars), 409 `LIST_NAME_TAKEN` (case-insensitive) |
+| `PATCH /api/lists/:id`  | `{ "name": "Office" }` | **200** the list                              | 400, 404 `NOT_FOUND`, 409 `LIST_NAME_TAKEN`                                   |
+| `DELETE /api/lists/:id` | —                      | **204**                                       | 404 `NOT_FOUND`                                                               |
+
+Deleting a list does **not** delete its tasks; they move to "no list" (`listId: null`).
+
+---
+
+## Tasks (`/api/tasks`) — requires a session
+
+A task object:
+
+```json
+{
+  "id": "uuid",
+  "title": "Submit report",
+  "notes": null,
+  "dueAt": "2026-10-20T16:00:00.000Z",
+  "dueAllDay": false,
+  "remindAt": "2026-10-20T15:00:00.000Z",
+  "priority": "HIGH",
+  "recurrence": "NONE",
+  "status": "OPEN",
+  "completedAt": null,
+  "listId": null,
+  "isOverdue": false,
+  "createdAt": "…",
+  "updatedAt": "…"
+}
+```
+
+- `priority`: `LOW` | `MEDIUM` | `HIGH`. `recurrence`: `NONE` | `DAILY` | `WEEKLY` | `MONTHLY`. `status`: `OPEN` | `COMPLETED`.
+- `dueAllDay: true` means "due on that date, no time". `dueAt` is then the start of that day in the
+  user's timezone (the server normalizes whatever instant you send to that day's start).
+- `isOverdue` is computed by the server: open, and past `dueAt` (all-day: the day has ended in the
+  user's timezone).
+- Rules: `title` 1–200 chars; a `dueAt` is required unless `priority` is `LOW`; a repeating task
+  needs a `dueAt` or a `remindAt`; `listId` must be one of your lists (else 400 `INVALID_LIST`).
+
+### `GET /api/tasks`
+
+All tasks / search. Query parameters (all optional):
+
+| Param    | Values                                        | Default   |
+| -------- | --------------------------------------------- | --------- |
+| `listId` | a list id, or `none` for tasks without a list | all lists |
+| `status` | `open`, `completed`, `all`                    | `open`    |
+| `q`      | text; case-insensitive search in titles       | —         |
+
+**200** `{ "items": [Task, ...] }` sorted by due date (undated last), then priority (high first),
+then creation time. At most 500 results.
+
+### `GET /api/tasks/today`
+
+**200** `{ "overdue": [Task], "today": [Task] }`. `overdue` = open tasks past due; `today` = tasks
+due today in the user's timezone (including completed ones) that aren't in `overdue`.
+
+### `GET /api/tasks/overdue`
+
+**200** `{ "items": [Task] }` — all open tasks past their due date.
+
+### `GET /api/tasks/:id`
+
+**200** Task, **404** `NOT_FOUND` (also for other users' tasks).
+
+### `POST /api/tasks`
+
+```json
+{
+  "title": "Submit report",
+  "notes": "optional",
+  "dueAt": "2026-10-20T16:00:00Z",
+  "dueAllDay": false,
+  "remindAt": "2026-10-20T15:00:00Z",
+  "priority": "HIGH",
+  "recurrence": "NONE",
+  "listId": null
+}
+```
+
+Only `title` is required (plus `dueAt` unless `priority` is `LOW`). Defaults: `priority: MEDIUM`,
+`recurrence: NONE`, `dueAllDay: false`, others `null`. **201** Task. **400** `VALIDATION_ERROR` /
+`INVALID_LIST`.
+
+### `PATCH /api/tasks/:id`
+
+Any subset of the `POST` fields; send `null` to clear `notes`, `dueAt`, `remindAt` or `listId`.
+The rules are checked against the task as it would be after the change. **200** Task.
+**400**, **404**.
+
+### `DELETE /api/tasks/:id`
+
+**204**, **404**.
+
+### `POST /api/tasks/:id/complete`
+
+Marks the task completed. For a repeating task, also creates its next occurrence:
+
+- counted from the due date (or the reminder time when there's no due date), never from the
+  completion time, on the user's local calendar (wall-clock time is kept across DST changes);
+- monthly tasks keep their original day of the month, using the last day of shorter months;
+- if occurrences were missed, only the next one that isn't already past due is created;
+- the reminder keeps the same offset from the due date.
+
+**200** `{ "task": Task, "next": Task | null }`. Completing an already-completed task changes
+nothing and returns `next: null`.
+
+### `POST /api/tasks/:id/reopen`
+
+Marks the task as not completed. **200** Task. (A next occurrence created when it was completed
+is kept.)
