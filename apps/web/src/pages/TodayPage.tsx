@@ -1,7 +1,8 @@
 import { toLocalDate } from '@todo/shared';
 import { useMe } from '../api/auth';
 import { useToday } from '../api/tasks';
-import { EmptyMessage, LoadError, PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { LoadError, PageHeader } from '../components/PageHeader';
 import { TaskSection } from '../components/TaskItem';
 import { useTaskEditor } from '../hooks/useTaskEditor';
 import { formatLongDate } from '../lib/format';
@@ -18,7 +19,7 @@ export function TodayPage() {
       {isPending ? null : isError ? (
         <LoadError />
       ) : !data.overdue.length && !data.today.length ? (
-        <EmptyMessage>Nothing due today — enjoy your day.</EmptyMessage>
+        <EmptyState kind="free" seed={toLocalDate(now, tz)} />
       ) : (
         <div className="space-y-6">
           <TaskSection title="Overdue" tone="warning" tasks={data.overdue} onEdit={openEdit} />

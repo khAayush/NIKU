@@ -100,3 +100,42 @@ export const completeTaskResponseSchema = z.object({
   next: taskSchema.nullable(),
 });
 export type CompleteTaskResponse = z.infer<typeof completeTaskResponseSchema>;
+
+/** A local calendar date, "yyyy-MM-dd". */
+export const localDateSchema = z.iso.date();
+
+export const CALENDAR_MAX_DAYS = 62;
+
+/** Visible range of the month grid, as local dates (inclusive). */
+export const calendarQuerySchema = z
+  .object({ from: localDateSchema, to: localDateSchema })
+  .refine((q) => q.from <= q.to, { message: '`from` must not be after `to`', path: ['to'] })
+  .refine((q) => (Date.parse(q.to) - Date.parse(q.from)) / 86_400_000 < CALENDAR_MAX_DAYS, {
+    message: `Range must be at most ${CALENDAR_MAX_DAYS} days`,
+    path: ['to'],
+  });
+export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
+
+export const calendarDaySchema = z.object({
+  total: z.number().int(),
+  completed: z.number().int(),
+  overdue: z.number().int(),
+});
+export type CalendarDay = z.infer<typeof calendarDaySchema>;
+
+/** Only days that have tasks are included, keyed by local date. */
+export const calendarResponseSchema = z.object({
+  days: z.record(z.string(), calendarDaySchema),
+});
+export type CalendarResponse = z.infer<typeof calendarResponseSchema>;
+
+export const dayQuerySchema = z.object({ date: localDateSchema });
+
+export const SNOOZE_OPTIONS = ['10m', '1h', 'tomorrow'] as const;
+export const snoozeSchema = z.object({ option: z.enum(SNOOZE_OPTIONS) });
+export type SnoozeOption = (typeof SNOOZE_OPTIONS)[number];
+export const SNOOZE_LABEL: Record<SnoozeOption, string> = {
+  '10m': '10 minutes',
+  '1h': '1 hour',
+  tomorrow: 'Tomorrow 9:00',
+};

@@ -2,6 +2,7 @@ import type { Task } from '@todo/shared';
 import { useMe } from '../api/auth';
 import { useLists, useSetTaskDone } from '../api/tasks';
 import { formatDateTime, formatDue, RECURRENCE_LABEL } from '../lib/format';
+import { SnoozeMenu } from './SnoozeMenu';
 
 const PRIORITY_STYLE: Record<Task['priority'], string> = {
   HIGH: 'bg-rose-50 text-rose-700 ring-rose-200',
@@ -9,7 +10,15 @@ const PRIORITY_STYLE: Record<Task['priority'], string> = {
   LOW: 'bg-slate-50 text-slate-500 ring-slate-200',
 };
 
-export function TaskItem({ task, onEdit }: { task: Task; onEdit: (task: Task) => void }) {
+export function TaskItem({
+  task,
+  onEdit,
+  snoozable = false,
+}: {
+  task: Task;
+  onEdit: (task: Task) => void;
+  snoozable?: boolean;
+}) {
   const tz = useMe().data!.timezone;
   const { data: lists = [] } = useLists();
   const setDone = useSetTaskDone();
@@ -51,6 +60,7 @@ export function TaskItem({ task, onEdit }: { task: Task; onEdit: (task: Task) =>
           )}
         </div>
       </button>
+      {snoozable && !done && <SnoozeMenu task={task} />}
     </li>
   );
 }
@@ -60,11 +70,13 @@ export function TaskSection({
   tasks,
   onEdit,
   tone = 'default',
+  snoozable = false,
 }: {
   title?: string;
   tasks: Task[];
   onEdit: (task: Task) => void;
   tone?: 'default' | 'warning';
+  snoozable?: boolean;
 }) {
   if (!tasks.length) return null;
   return (
@@ -78,7 +90,7 @@ export function TaskSection({
       )}
       <ul className="space-y-2">
         {tasks.map((t) => (
-          <TaskItem key={t.id} task={t} onEdit={onEdit} />
+          <TaskItem key={t.id} task={t} onEdit={onEdit} snoozable={snoozable} />
         ))}
       </ul>
     </section>

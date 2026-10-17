@@ -105,7 +105,9 @@ export function Layout() {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 md:px-8">
+        <main
+          className={`mx-auto w-full flex-1 px-4 py-6 md:px-8 ${location.pathname === '/calendar' ? 'max-w-7xl' : 'max-w-4xl'}`}
+        >
           <Outlet />
         </main>
       </div>

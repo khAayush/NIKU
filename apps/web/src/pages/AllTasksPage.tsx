@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useLists, useTasks } from '../api/tasks';
-import { EmptyMessage, LoadError, PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { LoadError, PageHeader } from '../components/PageHeader';
 import { TaskSection } from '../components/TaskItem';
 import { useTaskEditor } from '../hooks/useTaskEditor';
 
@@ -106,9 +107,11 @@ export function AllTasksPage() {
       {isPending ? null : isError ? (
         <LoadError />
       ) : !data.length ? (
-        <EmptyMessage>
-          {q ? `No tasks match "${q}".` : 'No tasks here yet — add one to get started.'}
-        </EmptyMessage>
+        q ? (
+          <EmptyState kind="no-results">No tasks match "{q}".</EmptyState>
+        ) : (
+          <EmptyState kind="no-tasks" />
+        )
       ) : (
         <div className="space-y-6">
           <TaskSection

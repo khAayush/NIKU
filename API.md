@@ -279,6 +279,17 @@ Marks the task completed. For a repeating task, also creates its next occurrence
 **200** `{ "task": Task, "next": Task | null }`. Completing an already-completed task changes
 nothing and returns `next: null`.
 
+### `POST /api/tasks/:id/snooze`
+
+```json
+{ "option": "10m" }
+```
+
+`option`: `10m` (10 minutes from now), `1h` (1 hour from now), `tomorrow` (9:00 tomorrow in the
+user's timezone). Sets `remindAt` to that time — even if the task had no reminder — and changes
+nothing else (not the due date, not the stored reminder offset used for repeats).
+**200** Task. **400** `VALIDATION_ERROR`, **404**, **409** `TASK_COMPLETED`.
+
 ### `POST /api/tasks/:id/reopen`
 
 Marks the task as not completed. **200** Task. (A next occurrence created when it was completed

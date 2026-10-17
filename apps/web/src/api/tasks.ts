@@ -1,5 +1,7 @@
 import type {
+  CalendarResponse,
   CompleteTaskResponse,
+  SnoozeOption,
   CreateTaskInput,
   List,
   ListInput,
@@ -44,6 +46,21 @@ export function useTasks(query: ListTasksQuery) {
   });
 }
 
+export function useCalendar(from: string, to: string) {
+  return useQuery({
+    queryKey: [...TASKS_KEY, 'calendar', from, to],
+    queryFn: () => api<CalendarResponse>(`/tasks/calendar?from=${from}&to=${to}`),
+    placeholderData: (prev) => prev, // keep the grid steady while switching months
+  });
+}
+
+export function useDayTasks(date: string) {
+  return useQuery({
+    queryKey: [...TASKS_KEY, 'day', date],
+    queryFn: () => api<{ items: Task[] }>(`/tasks/day?date=${date}`).then((r) => r.items),
+  });
+}
+
 /** Wraps a mutation so every task view and list count refreshes afterwards. */
 function useTaskMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
   const queryClient = useQueryClient();
@@ -73,6 +90,11 @@ export const useSetTaskDone = () =>
     done
       ? api<CompleteTaskResponse>(`/tasks/${id}/complete`, json('POST'))
       : api<Task>(`/tasks/${id}/reopen`, json('POST')),
+  );
+
+export const useSnoozeTask = () =>
+  useTaskMutation(({ id, option }: { id: string; option: SnoozeOption }) =>
+    api<Task>(`/tasks/${id}/snooze`, json('POST', { option })),
   );
 
 // ---- Lists ----

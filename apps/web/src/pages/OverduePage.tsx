@@ -1,5 +1,6 @@
 import { useOverdue } from '../api/tasks';
-import { EmptyMessage, LoadError, PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { LoadError, PageHeader } from '../components/PageHeader';
 import { TaskSection } from '../components/TaskItem';
 import { useTaskEditor } from '../hooks/useTaskEditor';
 
@@ -13,7 +14,7 @@ export function OverduePage() {
       {isPending ? null : isError ? (
         <LoadError />
       ) : !data.length ? (
-        <EmptyMessage>Nothing overdue — you're all caught up.</EmptyMessage>
+        <EmptyState kind="caught-up" />
       ) : (
         <TaskSection tasks={data} onEdit={openEdit} />
       )}

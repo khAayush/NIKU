@@ -2,7 +2,8 @@ import { LIST_NAME_MAX, listInputSchema, type List } from '@todo/shared';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useCreateList, useDeleteList, useLists, useRenameList } from '../api/tasks';
-import { EmptyMessage, PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { PageHeader } from '../components/PageHeader';
 import { Alert, Button, errorMessage, validate } from '../components/ui';
 
 const inputClass =
@@ -49,7 +50,9 @@ export function ListsPage() {
         </div>
       )}
       {isPending ? null : !lists?.length ? (
-        <EmptyMessage>No lists yet. Lists are optional — tasks can live without one.</EmptyMessage>
+        <EmptyState kind="no-tasks">
+          No lists yet. Lists are optional — tasks can live without one.
+        </EmptyState>
       ) : (
         <ul className="max-w-md divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
           {lists.map((l) => (

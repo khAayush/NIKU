@@ -1,7 +1,11 @@
 import {
   isPastDue,
   localDayRange,
+  localToUtc,
   startOfLocalDay,
+  toLocalDate,
+  type CalendarResponse,
+  type SnoozeOption,
   taskRuleIssues,
   type CompleteTaskResponse,
   type Recurrence,
@@ -18,6 +22,7 @@ import { AppError, notFound } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 import { assertOwnList } from '../lists/service.js';
 import { localDayOfMonth, nextOccurrence } from './recurrence.js';
+import { snoozeUntil } from './snooze.js';
 
 const MAX_RESULTS = 500;
 
@@ -263,4 +268,57 @@ export async function todayTasks(user: AuthUser): Promise<TodayResponse> {
     .filter((r) => !overdueIds.has(r.id))
     .map((r) => toTask(r, user.timezone, now));
   return { overdue, today };
+}
+
+/** Per-day counts for the month grid: only days with tasks, keyed by local date. */
+export async function calendarSummary(
+  user: AuthUser,
+  from: string,
+  to: string,
+): Promise<CalendarResponse> {
+  const now = new Date();
+  const start = localToUtc(from, null, user.timezone)!;
+  const end = localDayRange(localToUtc(to, null, user.timezone)!, user.timezone).end;
+  const rows = await prisma.task.findMany({
+    where: { userId: user.id, dueAt: { gte: start, lt: end } },
+    select: { dueAt: true, dueAllDay: true, status: true },
+  });
+
+  const days: CalendarResponse['days'] = {};
+  for (const row of rows) {
+    const key = toLocalDate(row.dueAt!, user.timezone);
+    const day = (days[key] ??= { total: 0, completed: 0, overdue: 0 });
+    day.total++;
+    if (row.status === 'COMPLETED') day.completed++;
+    else if (isPastDue(row, now, user.timezone)) day.overdue++;
+  }
+  return { days };
+}
+
+/** Every task due on a local date (including completed ones), for the calendar day panel. */
+export async function dayTasks(user: AuthUser, date: string) {
+  const { start, end } = localDayRange(localToUtc(date, null, user.timezone)!, user.timezone);
+  const rows = await prisma.task.findMany({
+    where: { userId: user.id, dueAt: { gte: start, lt: end } },
+    orderBy: ORDER,
+    take: MAX_RESULTS,
+  });
+  const now = new Date();
+  return rows.map((r) => toTask(r, user.timezone, now));
+}
+
+/**
+ * Moves only the reminder time (never the due date or the stored reminder offset).
+ * Works whether or not the task already had a reminder.
+ */
+export async function snoozeTask(user: AuthUser, id: string, option: SnoozeOption) {
+  const existing = await findOwnTask(user.id, id);
+  if (existing.status === 'COMPLETED') {
+    throw new AppError(409, 'TASK_COMPLETED', 'Completed tasks cannot be snoozed');
+  }
+  const row = await prisma.task.update({
+    where: { id },
+    data: { remindAt: snoozeUntil(option, new Date(), user.timezone) },
+  });
+  return toTask(row, user.timezone);
 }
