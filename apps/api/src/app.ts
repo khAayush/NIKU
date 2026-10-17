@@ -1,32 +1,36 @@
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
-import Fastify, { type FastifyServerOptions } from 'fastify';
+import Fastify, { type FastifyBaseLogger } from 'fastify';
+import { authenticate } from './auth/authenticate.js';
+import { authRoutes } from './auth/routes.js';
 import { healthRoutes } from './health/routes.js';
 import { env } from './lib/env.js';
 import { registerErrorHandlers } from './lib/errors.js';
-
-function loggerOptions(): FastifyServerOptions['logger'] {
-  if (env.NODE_ENV === 'test') return false;
-  if (env.NODE_ENV === 'development') {
-    return { level: env.LOG_LEVEL, transport: { target: 'pino-pretty' } };
-  }
-  return { level: env.LOG_LEVEL }; // JSON lines in production
-}
+import { logger } from './lib/logger.js';
+import { userRoutes } from './users/routes.js';
 
 /** Builds the Fastify app without listening, so tests can use `app.inject`. */
 export async function buildApp() {
   const app = Fastify({
-    logger: loggerOptions(),
+    loggerInstance: logger as FastifyBaseLogger,
     bodyLimit: 100 * 1024, // 100 KB is plenty for task JSON
   });
 
   await app.register(helmet);
   await app.register(cors, { origin: env.WEB_ORIGIN, credentials: true });
   registerErrorHandlers(app);
+  app.decorateRequest('user', null);
 
   await app.register(
     async (api) => {
       await api.register(healthRoutes);
+      await api.register(authRoutes);
+
+      // Everything registered in here requires a signed-in user.
+      await api.register(async (protectedApi) => {
+        protectedApi.addHook('preHandler', authenticate);
+        await protectedApi.register(userRoutes);
+      });
     },
     { prefix: '/api' },
   );

@@ -70,7 +70,12 @@ Run from the repo root (local Postgres must be up: `pnpm db:up`).
 - Env vars are validated in `apps/api/src/lib/env.ts` (Zod). Local dev loads the repo-root `.env`; existing process env always wins.
 - `packages/shared` is consumed as TypeScript source (no build step); imports inside it use `.js` extensions.
 - New pnpm dependencies with install scripts must be allowed under `allowBuilds` in `pnpm-workspace.yaml`.
-- API tests: `buildApp()` + `app.inject()`, against `todo_test` (migrated in `apps/api/test/global-setup.ts`).
+- API tests: `buildApp()` + `app.inject()`, against `todo_test` (migrated in `apps/api/test/global-setup.ts`). Use `test/helpers.ts` (`resetState`, `signUp`, `request` adds the Origin header Better Auth requires).
+- Auth wiring: `src/auth/auth.ts` (Better Auth config), `src/auth/routes.ts` (mounts `/api/auth/*`, validates bodies with shared schemas, rewrites errors to our format), `src/auth/rate-limit.ts` (in-memory per-IP + per-email limits for sign-in/up/reset), `src/auth/authenticate.ts` (`authenticate` preHandler + `currentUser(request)`).
+- Protected routes are registered inside the `protectedApi` scope in `src/app.ts`.
+- Better Auth `/update-user` is disabled; profile changes go through `PATCH /api/me`.
+- Email: `src/lib/mailer.ts`. Without SMTP config, mail goes to an in-memory `outbox` (tests read it) and is logged in development.
+- Web: TanStack Query; `useMe()` is the auth state (null = signed out). Any 401 sets it to null, which sends the user to /login.
 
 ## Testing
 

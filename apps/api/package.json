@@ -16,12 +16,15 @@
   "dependencies": {
     "@fastify/cors": "^11.3.1",
     "@fastify/helmet": "^13.2.0",
+    "@node-rs/argon2": "^2.2.2",
     "@prisma/adapter-pg": "~7.10.1",
     "@prisma/client": "~7.10.1",
     "@todo/shared": "workspace:*",
     "better-auth": "^1.7.10",
     "fastify": "^5.12.7",
+    "nodemailer": "^10.1.2",
     "pg": "^8.23.1",
+    "pino": "^10.4.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

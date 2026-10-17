@@ -22,7 +22,7 @@ packages/shared   Zod schemas and types shared by api and web
 
 ```bash
 pnpm install
-cp .env.example .env
+cp .env.example .env                      # then set BETTER_AUTH_SECRET (command is in the file)
 pnpm db:up                                # start Postgres in Docker (creates todo and todo_test DBs)
 pnpm --filter @todo/api db:generate      # generate the Prisma client
 pnpm --filter @todo/api db:migrate       # apply migrations to the dev database
@@ -38,6 +38,9 @@ pnpm dev
 - API: http://localhost:3000 — try http://localhost:5173/api/health
 
 The footer of the web app shows whether it can reach the API.
+
+**Emails in development:** if `SMTP_USER`/`SMTP_PASS` are empty, emails (e.g. password reset links)
+are not sent; they are printed in the API's log so you can copy the link.
 
 ## Common commands
 

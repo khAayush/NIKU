@@ -1,4 +1,6 @@
-import { NavLink, Outlet } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { NavLink, Outlet, useNavigate } from 'react-router';
+import { ME_KEY, signOut, useMe } from '../api/auth';
 import { HealthBadge } from './HealthBadge';
 
 const NAV = [
@@ -11,10 +13,35 @@ const NAV = [
 
 /** Desktop-first: sidebar on wide screens, top bar on phones. */
 export function Layout() {
+  const { data: me } = useMe();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  async function onSignOut() {
+    try {
+      await signOut();
+    } finally {
+      queryClient.clear();
+      queryClient.setQueryData(ME_KEY, null);
+      navigate('/login', { replace: true });
+    }
+  }
+
   return (
     <div className="min-h-dvh bg-slate-50 text-slate-900 md:flex">
       <aside className="border-b border-slate-200 bg-white md:w-56 md:shrink-0 md:border-r md:border-b-0">
-        <div className="px-4 py-4 text-lg font-semibold text-indigo-600">Tasks</div>
+        <div className="flex items-center justify-between px-4 py-4 md:block">
+          <div className="text-lg font-semibold text-indigo-600">Tasks</div>
+          <div className="flex items-center gap-3 text-sm md:mt-3 md:block">
+            <div className="truncate text-slate-600 md:mb-1">{me?.name}</div>
+            <button
+              onClick={onSignOut}
+              className="text-slate-500 hover:text-slate-800 hover:underline"
+            >
+              Log out
+            </button>
+          </div>
+        </div>
         <nav className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:pb-4">
           {NAV.map((item) => (
             <NavLink
