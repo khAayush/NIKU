@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router';
 import { App } from './App';
 import { ME_KEY } from './api/auth';
 import { ApiRequestError } from './api/client';
+import { registerServiceWorker } from './lib/push';
 import './index.css';
 
 const queryClient: QueryClient = new QueryClient({
@@ -21,6 +22,8 @@ const queryClient: QueryClient = new QueryClient({
     },
   },
 });
+
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -56,6 +56,10 @@ model Task {
   dueAllDay             Boolean    @default(false)
   /// Next time the reminder fires (moves when snoozed).
   remindAt              DateTime?  @db.Timestamptz(3)
+  /// pg-boss job that will fire `remindAt`; cancelled whenever the reminder changes.
+  reminderJobId         String?
+  /// When the reminder for the current `remindAt` was sent (catch-up and de-duplication).
+  reminderSentAt        DateTime?  @db.Timestamptz(3)
   /// Minutes before dueAt the reminder is set; kept across recurrences. Null when there is no due date.
   reminderOffsetMinutes Int?
   priority              Priority   @default(MEDIUM)

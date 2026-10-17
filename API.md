@@ -150,7 +150,8 @@ The signed-in user's profile and settings.
 
 ### `PATCH /api/me`
 
-Updates any of `name`, `timezone`. Other fields are ignored.
+Updates any of `name`, `timezone`, and the reminder channels `notifyInApp`, `notifyPush`,
+`notifyEmail` (booleans). Other fields are ignored.
 
 ```json
 { "name": "Ana B.", "timezone": "Asia/Tokyo" }
@@ -337,3 +338,45 @@ nothing else (not the due date, not the stored reminder offset used for repeats)
 
 Marks the task as not completed. **200** Task. (A next occurrence created when it was completed
 is kept.)
+
+---
+
+## Reminders
+
+Reminders are scheduled on the server (pg-boss) whenever a task's `remindAt` is set, changed,
+snoozed or the task is reopened; they are cancelled when the reminder is removed, the task is
+completed or deleted. When a reminder fires it is delivered once through every channel the user
+enabled (`notifyInApp`, `notifyPush`, `notifyEmail`). Push and email deliveries are retried with
+exponential backoff (up to 5 retries) and failures are logged. Reminders that came due while the
+server was down are sent when it starts.
+
+### Real-time (Socket.IO)
+
+Connect to path `/socket.io` on the app's origin with the session cookie (browsers send it
+automatically). Connections without a valid session are rejected with `UNAUTHENTICATED`.
+
+Event `reminder` (server → client):
+
+```json
+{
+  "taskId": "uuid",
+  "title": "Submit report",
+  "dueAt": "2026-10-18T16:00:00.000Z",
+  "dueAllDay": false,
+  "remindAt": "2026-10-18T15:00:00.000Z",
+  "dueLabel": "Sun 18 Oct, 17:00",
+  "url": "https://tasks.example.com/today"
+}
+```
+
+Push messages carry the same JSON plus `"inApp": true|false`.
+
+### Web Push (`/api/push`) — requires a session
+
+| Method & path                    | Body                                                                        | Success                                                             | Errors                   |
+| -------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------ |
+| `GET /api/push/public-key`       | —                                                                           | **200** `{ "publicKey": "…" }` (VAPID, for `pushManager.subscribe`) | 404 `PUSH_DISABLED`      |
+| `POST /api/push/subscriptions`   | `PushSubscription.toJSON()`: `{ "endpoint", "keys": { "p256dh", "auth" } }` | **204** (upsert by endpoint)                                        | 400, 404 `PUSH_DISABLED` |
+| `DELETE /api/push/subscriptions` | `{ "endpoint": "…" }`                                                       | **204**                                                             | 400                      |
+
+Subscriptions that the push service reports as gone (404/410) are deleted automatically.

@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { ME_KEY, signOut, useMe } from '../api/auth';
 import { useLists } from '../api/tasks';
 import { QuickAdd } from './QuickAdd';
+import { ReminderToasts } from './ReminderToasts';
 
 /** Pages that show the quick-add bar. */
 const QUICK_ADD_PAGES = ['/today', '/overdue', '/calendar', '/all'];
@@ -115,6 +116,7 @@ export function Layout() {
           {QUICK_ADD_PAGES.includes(location.pathname) && <QuickAdd />}
           <Outlet />
         </main>
+        <ReminderToasts />
       </div>
     </div>
   );

@@ -9,6 +9,8 @@ import { registerErrorHandlers } from './lib/errors.js';
 import { logger } from './lib/logger.js';
 import { listRoutes } from './lists/routes.js';
 import { parseRoutes } from './parse/routes.js';
+import { pushRoutes } from './push/routes.js';
+import { stopBoss } from './reminders/queue.js';
 import { taskRoutes } from './tasks/routes.js';
 import { userRoutes } from './users/routes.js';
 
@@ -23,6 +25,7 @@ export async function buildApp() {
   await app.register(cors, { origin: env.WEB_ORIGIN, credentials: true });
   registerErrorHandlers(app);
   app.decorateRequest('user', null);
+  app.addHook('onClose', stopBoss);
 
   await app.register(
     async (api) => {
@@ -35,6 +38,7 @@ export async function buildApp() {
         await protectedApi.register(userRoutes);
         await protectedApi.register(listRoutes);
         await protectedApi.register(parseRoutes);
+        await protectedApi.register(pushRoutes);
         await protectedApi.register(taskRoutes);
       });
     },

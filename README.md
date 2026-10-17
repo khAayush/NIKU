@@ -39,6 +39,12 @@ pnpm dev
 
 The footer of the web app shows whether it can reach the API.
 
+**Reminders in development:** reminders are scheduled with pg-boss in the same Postgres
+database (schema `pgboss`), so they survive API restarts. In-app reminders pop up in any open
+tab. For browser push, generate VAPID keys (`pnpm --filter @todo/api vapid:generate`), put them
+in `.env`, restart the API and turn on _Browser push notifications_ in Settings (Chrome works on
+`http://localhost`).
+
 **Emails in development:** if `SMTP_USER`/`SMTP_PASS` are empty, emails (e.g. password reset links)
 are not sent; they are printed in the API's log so you can copy the link.
 

@@ -3,6 +3,7 @@ import { buildApp } from '../src/app.js';
 import { authLimiter } from '../src/auth/rate-limit.js';
 import { outbox } from '../src/lib/mailer.js';
 import { prisma } from '../src/lib/prisma.js';
+import { getBoss } from '../src/reminders/queue.js';
 
 export type TestApp = Awaited<ReturnType<typeof buildApp>>;
 
@@ -13,6 +14,7 @@ export async function resetState() {
   await prisma.$executeRawUnsafe(
     'TRUNCATE "task", "list", "push_subscription", "session", "account", "verification", "user" CASCADE',
   );
+  await (await getBoss()).deleteAllJobs();
   authLimiter.reset();
   outbox.length = 0;
 }

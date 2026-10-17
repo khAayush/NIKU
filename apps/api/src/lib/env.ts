@@ -25,6 +25,15 @@ const envSchema = z
     SMTP_PASS: z.string().optional(),
     /** "From" header for outgoing email, e.g. `Tasks <you@gmail.com>`. Defaults to SMTP_USER. */
     MAIL_FROM: z.string().optional(),
+    /** Web Push VAPID keys (generate with `pnpm --filter @todo/api vapid:generate`). */
+    VAPID_PUBLIC_KEY: z.string().optional(),
+    VAPID_PRIVATE_KEY: z.string().optional(),
+    /** Contact for push services, e.g. `mailto:you@example.com`. */
+    VAPID_SUBJECT: z.string().default('mailto:admin@localhost'),
+  })
+  .refine((e) => e.NODE_ENV !== 'production' || (e.VAPID_PUBLIC_KEY && e.VAPID_PRIVATE_KEY), {
+    message: 'VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are required in production',
+    path: ['VAPID_PUBLIC_KEY'],
   })
   .refine((e) => e.NODE_ENV !== 'production' || (e.SMTP_USER && e.SMTP_PASS), {
     message: 'SMTP_USER and SMTP_PASS are required in production',

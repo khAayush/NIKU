@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { ME_KEY, browserTimezone, deleteAccount, updateMe, useMe } from '../api/auth';
+import { NotificationSettings } from '../components/NotificationSettings';
 import { Alert, Button, Field, SelectField, errorMessage, validate } from '../components/ui';
 
 export function SettingsPage() {
@@ -12,6 +13,9 @@ export function SettingsPage() {
     <div className="space-y-8">
       <h1 className="text-2xl font-semibold">Settings</h1>
       <ProfileSection me={me} />
+      <Section title="Reminders">
+        <NotificationSettings me={me} />
+      </Section>
       <DeleteAccountSection />
     </div>
   );

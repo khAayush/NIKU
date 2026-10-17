@@ -69,6 +69,10 @@ export const updateMeSchema = z
   .object({
     name: nameSchema,
     timezone: timezoneSchema,
+    /** Reminder channels. */
+    notifyInApp: z.boolean(),
+    notifyPush: z.boolean(),
+    notifyEmail: z.boolean(),
   })
   .partial();
 export type UpdateMeInput = z.infer<typeof updateMeSchema>;

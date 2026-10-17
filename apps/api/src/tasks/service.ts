@@ -21,6 +21,7 @@ import type { Prisma, Task as TaskRow } from '../generated/prisma/client.js';
 import { AppError, notFound } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 import { assertOwnList } from '../lists/service.js';
+import { cancelReminder, scheduleReminder } from '../reminders/schedule.js';
 import { localDayOfMonth, nextOccurrence } from './recurrence.js';
 import { snoozeUntil } from './snooze.js';
 
@@ -123,6 +124,7 @@ export async function createTask(user: AuthUser, input: z.output<typeof createTa
       ),
     },
   });
+  await scheduleReminder(row);
   return toTask(row, user.timezone);
 }
 
@@ -160,12 +162,17 @@ export async function updateTask(user: AuthUser, id: string, input: UpdateTaskIn
         : {}),
     },
   });
+  if (input.remindAt !== undefined) {
+    const reminderChanged = existing.remindAt?.getTime() !== merged.remindAt?.getTime();
+    await scheduleReminder(row, { reminderChanged });
+  }
   return toTask(row, user.timezone);
 }
 
 export async function deleteTask(userId: string, id: string) {
-  const { count } = await prisma.task.deleteMany({ where: { id, userId } });
-  if (count === 0) throw notFound('Task not found');
+  const task = await findOwnTask(userId, id);
+  await cancelReminder(task);
+  await prisma.task.deleteMany({ where: { id, userId } });
 }
 
 export async function getTask(user: AuthUser, id: string) {
@@ -178,12 +185,11 @@ export async function getTask(user: AuthUser, id: string) {
  */
 export async function completeTask(user: AuthUser, id: string): Promise<CompleteTaskResponse> {
   const now = new Date();
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const existing = await tx.task.findFirst({ where: { id, userId: user.id } });
     if (!existing) throw notFound('Task not found');
     // Already completed: nothing to do, and never spawn a second next occurrence.
-    if (existing.status === 'COMPLETED')
-      return { task: toTask(existing, user.timezone, now), next: null };
+    if (existing.status === 'COMPLETED') return { task: existing, next: null, changed: false };
 
     const task = await tx.task.update({
       where: { id },
@@ -209,11 +215,17 @@ export async function completeTask(user: AuthUser, id: string): Promise<Complete
         })
       : null;
 
-    return {
-      task: toTask(task, user.timezone, now),
-      next: next ? toTask(next, user.timezone, now) : null,
-    };
+    return { task, next, changed: true };
   });
+
+  if (result.changed) {
+    await scheduleReminder(result.task); // completed: cancels its reminder
+    if (result.next) await scheduleReminder(result.next);
+  }
+  return {
+    task: toTask(result.task, user.timezone, now),
+    next: result.next ? toTask(result.next, user.timezone, now) : null,
+  };
 }
 
 export async function reopenTask(user: AuthUser, id: string) {
@@ -222,6 +234,7 @@ export async function reopenTask(user: AuthUser, id: string) {
     where: { id },
     data: { status: 'OPEN', completedAt: null },
   });
+  await scheduleReminder(row);
   return toTask(row, user.timezone);
 }
 
@@ -320,5 +333,6 @@ export async function snoozeTask(user: AuthUser, id: string, option: SnoozeOptio
     where: { id },
     data: { remindAt: snoozeUntil(option, new Date(), user.timezone) },
   });
+  await scheduleReminder(row, { reminderChanged: true });
   return toTask(row, user.timezone);
 }
