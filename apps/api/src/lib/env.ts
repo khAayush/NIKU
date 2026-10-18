@@ -1,10 +1,16 @@
 import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { z } from 'zod';
 
-// Local development keeps variables in the repo-root .env; production injects them directly.
-const rootEnvFile = fileURLToPath(new URL('../../../../.env', import.meta.url));
-if (existsSync(rootEnvFile)) process.loadEnvFile(rootEnvFile);
+// Local development keeps variables in the repo-root .env (found by walking up from the working
+// directory); production injects them directly. Variables already set always win.
+for (let dir = process.cwd(), i = 0; i < 4; dir = dirname(dir), i++) {
+  const file = join(dir, '.env');
+  if (existsSync(file)) {
+    process.loadEnvFile(file);
+    break;
+  }
+}
 
 const envSchema = z
   .object({

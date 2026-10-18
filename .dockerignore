@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/coverage
+**/.tmp
+apps/api/src/generated
+.git
+.claude
+.env
+.env.*
+!.env.example
+backups
+*.log

@@ -14,15 +14,16 @@ Every non-2xx response has this shape:
 
 `details` is optional (for `VALIDATION_ERROR` it holds the list of Zod issues).
 
-| Status | Code                | When                                                           |
-| ------ | ------------------- | -------------------------------------------------------------- |
-| 400    | `VALIDATION_ERROR`  | Request body/query failed validation                           |
-| 400    | `BAD_REQUEST`       | Malformed request (e.g. invalid JSON)                          |
-| 401    | `UNAUTHENTICATED`   | Missing or expired session                                     |
-| 404    | `NOT_FOUND`         | Unknown route, or a resource that doesn't exist or isn't yours |
-| 413    | `PAYLOAD_TOO_LARGE` | Body larger than 100 KB                                        |
-| 429    | `RATE_LIMITED`      | Too many requests (see `Retry-After` header)                   |
-| 500    | `INTERNAL_ERROR`    | Unexpected server error (details are logged, not returned)     |
+| Status | Code                | When                                                             |
+| ------ | ------------------- | ---------------------------------------------------------------- |
+| 400    | `VALIDATION_ERROR`  | Request body/query failed validation                             |
+| 400    | `BAD_REQUEST`       | Malformed request (e.g. invalid JSON)                            |
+| 401    | `UNAUTHENTICATED`   | Missing or expired session                                       |
+| 403    | `FORBIDDEN_ORIGIN`  | State-changing request with an `Origin` header from another site |
+| 404    | `NOT_FOUND`         | Unknown route, or a resource that doesn't exist or isn't yours   |
+| 413    | `PAYLOAD_TOO_LARGE` | Body larger than 100 KB                                          |
+| 429    | `RATE_LIMITED`      | Too many requests (see `Retry-After` header)                     |
+| 500    | `INTERNAL_ERROR`    | Unexpected server error (details are logged, not returned)       |
 
 ### Authentication
 

@@ -60,6 +60,14 @@ are not sent; they are printed in the API's log so you can copy the link.
 | `pnpm --filter @todo/api db:migrate` | Create/apply a migration after editing `schema.prisma` |
 | `pnpm --filter @todo/api db:studio`  | Browse the database                                    |
 
+## Production
+
+Production runs with Docker Compose: `Dockerfile` (targets `api`, `web`, `migrate`),
+`docker-compose.prod.yml`, `Caddyfile` (HTTPS + security headers) and `scripts/backup.sh`.
+See [DEPLOY.md](DEPLOY.md) for the full server setup.
+
+To check the production API bundle locally: `pnpm --filter @todo/api build && pnpm --filter @todo/api start`.
+
 ## Changing the database schema
 
 1. Edit `apps/api/prisma/schema.prisma`.

@@ -13,6 +13,10 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules,
   },
   {
+    files: ['**/scripts/**/*.mjs', '**/*.config.{js,ts}'],
+    languageOptions: { globals: globals.node },
+  },
+  {
     files: ['apps/web/public/sw.js'],
     languageOptions: { globals: globals.serviceworker },
   },

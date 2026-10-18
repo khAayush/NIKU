@@ -254,6 +254,9 @@ importers:
       '@types/web-push':
         specifier: ^3.6.4
         version: 3.6.4
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       pino-pretty:
         specifier: ^13.2.0
         version: 13.2.0

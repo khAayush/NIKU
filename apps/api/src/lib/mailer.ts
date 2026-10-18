@@ -19,6 +19,20 @@ const transport =
       })
     : null;
 
+/** Checks the SMTP login at startup so misconfiguration shows up in the logs immediately. */
+export async function verifyMailer(): Promise<void> {
+  if (!transport) {
+    logger.warn('SMTP is not configured: emails will not be sent');
+    return;
+  }
+  try {
+    await transport.verify();
+    logger.info('SMTP connection verified');
+  } catch (err) {
+    logger.error({ err }, 'SMTP verification failed: check SMTP_USER / SMTP_PASS');
+  }
+}
+
 export async function sendMail(mail: Mail): Promise<void> {
   if (!transport) {
     outbox.push(mail);

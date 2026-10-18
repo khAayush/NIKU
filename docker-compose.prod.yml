@@ -1,0 +1,86 @@
+# Production stack. Usage (on the server, in the repo directory, with .env filled in):
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml run --rm migrate
+# See DEPLOY.md.
+name: todo
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '5'
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: todo
+      POSTGRES_DB: todo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql
+    # No published ports: only containers on the internal "backend" network can reach it.
+    networks: [backend]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U todo -d todo']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  api:
+    build: { context: ., target: api }
+    image: todo-api
+    restart: unless-stopped
+    env_file: ${ENV_FILE:-.env}
+    # These always win over values in .env.
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: postgresql://todo:${POSTGRES_PASSWORD}@db:5432/todo
+      WEB_ORIGIN: https://${DOMAIN:?Set DOMAIN in .env}
+    depends_on:
+      db: { condition: service_healthy }
+    # backend: database; frontend: reachable by Caddy, and internet access for SMTP and push.
+    networks: [backend, frontend]
+    logging: *logging
+
+  migrate:
+    build: { context: ., target: migrate }
+    image: todo-migrate
+    profiles: [tools]
+    environment:
+      DATABASE_URL: postgresql://todo:${POSTGRES_PASSWORD}@db:5432/todo
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [backend]
+
+  caddy:
+    build: { context: ., target: web }
+    image: todo-web
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    volumes:
+      - caddy-data:/data # certificates: keep this volume
+      - caddy-config:/config
+    depends_on: [api]
+    networks: [frontend]
+    logging: *logging
+
+networks:
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

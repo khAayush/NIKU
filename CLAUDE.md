@@ -89,6 +89,15 @@ Run from the repo root (local Postgres must be up: `pnpm db:up`).
 - Web: TanStack Query; task/list mutations invalidate `['tasks']` and `['lists']`. `useTaskEditor()` opens the create/edit modal.
 - Web: TanStack Query; `useMe()` is the auth state (null = signed out). Any 401 sets it to null, which sends the user to /login.
 
+## Production
+
+- `Dockerfile` targets: `api` (esbuild bundle `apps/api/dist/server.js` + prod deps via `pnpm deploy --legacy`, runs as `node`), `web` (Caddy + built SPA), `migrate` (`prisma migrate deploy`). Build script: `apps/api/scripts/build.mjs` (npm deps external, `@todo/*` bundled).
+- `docker-compose.prod.yml`: `db` only on the internal `backend` network (no ports), `api` on backend+frontend, `caddy` publishes 80/443. Compose sets NODE_ENV/HOST/PORT/DATABASE_URL/WEB_ORIGIN (they override `.env`). New env vars: add to `.env.example`, `env.ts`, and DEPLOY.md.
+- Caddy sets CSP/HSTS/etc. — new third-party resources (scripts, fonts, APIs) need a CSP change in `Caddyfile`.
+- API trusts exactly one proxy hop in production (`trustProxy`), so `request.ip` is the real client. Non-GET requests with a foreign `Origin` get 403.
+- Shutdown order matters: Socket.IO engine first, then `app.close()` (else Docker SIGKILLs).
+- `scripts/backup.sh`: pg_dump custom format, keeps 14; restore steps in DEPLOY.md.
+
 ## Testing
 
 - Vitest in every package. Unit-test business logic (services, recurrence, parser, time helpers); integration-test API routes against a test database.
