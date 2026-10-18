@@ -44,5 +44,5 @@ export async function sendMail(mail: Mail): Promise<void> {
     }
     return;
   }
-  await transport.sendMail({ from: env.MAIL_FROM ?? env.SMTP_USER, ...mail });
+  await transport.sendMail({ from: env.MAIL_FROM ?? `NIKU <${env.SMTP_USER}>`, ...mail });
 }

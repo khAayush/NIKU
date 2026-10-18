@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Personal task & reminder web app for a small group of users. API-first: the web app is one client; a future AR-glasses client will use the same API. Full requirements live in `SPEC.md` — read it before starting any phase.
+**NIKU**: personal task & reminder web app for a small group of users. API-first: the web app is one client; a future AR-glasses client will use the same API. Full requirements live in `SPEC.md` — read it before starting any phase.
 
 ## Working rules
 

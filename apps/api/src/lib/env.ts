@@ -29,7 +29,7 @@ const envSchema = z
     /** Gmail address used to send email, and its Google app password. */
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
-    /** "From" header for outgoing email, e.g. `Tasks <you@gmail.com>`. Defaults to SMTP_USER. */
+    /** "From" header for outgoing email, e.g. `NIKU <you@gmail.com>`. Defaults to `NIKU <SMTP_USER>`. */
     MAIL_FROM: z.string().optional(),
     /** Web Push VAPID keys (generate with `pnpm --filter @todo/api vapid:generate`). */
     VAPID_PUBLIC_KEY: z.string().optional(),

@@ -162,7 +162,7 @@ Set these (every variable is explained in `.env.example`):
 | `BETTER_AUTH_SECRET`                    | output of `openssl rand -base64 48`          |
 | `SMTP_USER`                             | your Gmail address                           |
 | `SMTP_PASS`                             | a Gmail **app password** (below)             |
-| `MAIL_FROM`                             | e.g. `Tasks <you@gmail.com>` (optional)      |
+| `MAIL_FROM`                             | e.g. `NIKU <you@gmail.com>` (optional)       |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | generate with the command below              |
 | `VAPID_SUBJECT`                         | `mailto:` + your email                       |
 
@@ -170,7 +170,7 @@ You can ignore `NODE_ENV`, `DATABASE_URL`, `WEB_ORIGIN`, `HOST` and `PORT`: the 
 file sets them and overrides anything in `.env`.
 
 **Gmail app password:** Google Account → Security → 2-Step Verification (must be on) → App
-passwords → create one named "Tasks" → copy the 16 characters (without spaces) into `SMTP_PASS`.
+passwords → create one named "NIKU" → copy the 16 characters (without spaces) into `SMTP_PASS`.
 
 **VAPID keys** (for push notifications):
 

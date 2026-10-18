@@ -11,7 +11,7 @@ import { hashPassword, verifyPassword } from './password.js';
 const DAY = 60 * 60 * 24;
 
 export const auth = betterAuth({
-  appName: 'Tasks',
+  appName: 'NIKU',
   baseURL: env.WEB_ORIGIN,
   basePath: '/api/auth',
   secret: env.BETTER_AUTH_SECRET,
@@ -30,7 +30,7 @@ export const auth = betterAuth({
       // Not awaited, so response time doesn't reveal whether the email exists.
       void sendMail({
         to: user.email,
-        subject: 'Reset your password',
+        subject: 'Reset your NIKU password',
         text:
           `Hi ${user.name},\n\nUse this link to choose a new password. It expires in 30 minutes ` +
           `and can only be used once:\n\n${url}\n\n` +

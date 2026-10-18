@@ -1,6 +1,6 @@
-# Tasks
+# NIKU
 
-Personal task & reminder web app. See [SPEC.md](SPEC.md) for requirements and [API.md](API.md) for the API.
+NIKU is a personal task & reminder web app. See [SPEC.md](SPEC.md) for requirements and [API.md](API.md) for the API.
 
 ## Stack
 

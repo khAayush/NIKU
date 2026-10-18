@@ -55,7 +55,7 @@ export function Layout() {
     <div className="min-h-dvh bg-slate-50 text-slate-900 md:flex">
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:overflow-y-auto md:border-r md:border-b-0">
         <div className="flex items-center justify-between px-4 py-4 md:block">
-          <div className="text-lg font-semibold text-indigo-600">Tasks</div>
+          <div className="text-lg font-semibold text-indigo-600">NIKU</div>
           <div className="flex items-center gap-3 text-sm md:mt-3 md:block">
             <div className="truncate text-slate-600 md:mb-1">{me?.name}</div>
             <button
