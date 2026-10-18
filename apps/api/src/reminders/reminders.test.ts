@@ -45,8 +45,8 @@ async function createTask(u: User, payload: object): Promise<Task> {
   return res.json();
 }
 
-const setHours = (u: User, reminderHours: number[]) =>
-  call(u, 'PATCH', '/api/me', { reminderHours });
+const setMinutes = (u: User, reminderMinutes: number[]) =>
+  call(u, 'PATCH', '/api/me', { reminderMinutes });
 
 /** The task's reminders, earliest first. */
 const reminders = (taskId: string) =>
@@ -75,7 +75,7 @@ async function dueReminder(
     data: { userId: u.id, title, dueAt: inMinutes(30), status },
   });
   const reminder = await prisma.taskReminder.create({
-    data: { taskId: task.id, hoursBefore: 1, remindAt: inMinutes(-1), sentAt },
+    data: { taskId: task.id, minutesBefore: 60, remindAt: inMinutes(-1), sentAt },
   });
   const data: ReminderJobData = { reminderId: reminder.id, remindAt: iso(reminder.remindAt) };
   return { task, reminder, data };
@@ -85,19 +85,19 @@ describe('reminders from settings', () => {
   it('new users get one reminder, 1 hour before', async () => {
     const u = await signUp(app);
     const me = (await request(app, { method: 'GET', url: '/api/me', cookie: u.cookie })).json();
-    expect(me.reminderHours).toEqual([1]);
+    expect(me.reminderMinutes).toEqual([60]);
   });
 
-  it('creates one scheduled reminder per chosen hour', async () => {
+  it('creates one scheduled reminder per chosen time', async () => {
     const u = await signUp(app);
-    await setHours(u, [24, 1, 2]);
+    await setMinutes(u, [1440, 60, 120]);
     const due = inMinutes(3 * 24 * 60);
     const t = await createTask(u, { title: 'A', dueAt: iso(due) });
 
     const rows = await reminders(t.id);
-    expect(rows.map((r) => r.hoursBefore)).toEqual([24, 2, 1]);
+    expect(rows.map((r) => r.minutesBefore)).toEqual([1440, 120, 60]);
     for (const r of rows) {
-      expect(r.remindAt.getTime()).toBe(due.getTime() - r.hoursBefore! * HOUR);
+      expect(r.remindAt.getTime()).toBe(due.getTime() - r.minutesBefore! * MIN);
       const j = await job(r.jobId);
       expect(j).toMatchObject({ state: 'created', data: { reminderId: r.id } });
       expect(j!.startAfter.getTime()).toBe(r.remindAt.getTime());
@@ -107,15 +107,15 @@ describe('reminders from settings', () => {
 
   it('skips reminder times that have already passed', async () => {
     const u = await signUp(app);
-    await setHours(u, [24, 2, 1]);
+    await setMinutes(u, [1440, 120, 60, 30]);
     const t = await createTask(u, { title: 'Soon', dueAt: iso(inMinutes(90)) });
-    expect((await reminders(t.id)).map((r) => r.hoursBefore)).toEqual([1]);
+    expect((await reminders(t.id)).map((r) => r.minutesBefore)).toEqual([60, 30]);
   });
 
   it('counts back from 6:00 on the day for all-day tasks', async () => {
     const tz = 'Europe/London';
     const u = await signUp(app, { timezone: tz });
-    await setHours(u, [24, 1]);
+    await setMinutes(u, [1440, 60, 30]);
     const day = DateTime.now().setZone(tz).plus({ days: 5 }).toFormat('yyyy-MM-dd');
     const t = await createTask(u, {
       title: 'Holiday',
@@ -126,7 +126,7 @@ describe('reminders from settings', () => {
       DateTime.fromJSDate(r.remindAt, { zone: tz }).toFormat("yyyy-MM-dd'T'HH:mm"),
     );
     const prev = DateTime.fromISO(day, { zone: tz }).minus({ days: 1 }).toFormat('yyyy-MM-dd');
-    expect(times).toEqual([`${prev}T06:00`, `${day}T05:00`]);
+    expect(times).toEqual([`${prev}T06:00`, `${day}T05:00`, `${day}T05:30`]);
   });
 
   it('gives tasks without a due date no reminders', async () => {
@@ -138,7 +138,7 @@ describe('reminders from settings', () => {
 
   it('gives no reminders when the user chose none', async () => {
     const u = await signUp(app);
-    await setHours(u, []);
+    await setMinutes(u, []);
     const t = await createTask(u, { title: 'A', dueAt: iso(inMinutes(600)) });
     expect(await reminders(t.id)).toEqual([]);
   });
@@ -151,17 +151,17 @@ describe('reminders from settings', () => {
     await call(u, 'POST', `/api/tasks/${done.id}/complete`);
     const oneHourJob = (await reminders(open.id))[0]!.jobId;
 
-    const res = await setHours(u, [2, 48, 2]);
-    expect(res.json().reminderHours).toEqual([48, 2]);
+    const res = await setMinutes(u, [120, 2880, 120, 30]);
+    expect(res.json().reminderMinutes).toEqual([2880, 120, 30]);
 
-    expect((await reminders(open.id)).map((r) => r.hoursBefore)).toEqual([48, 2]);
+    expect((await reminders(open.id)).map((r) => r.minutesBefore)).toEqual([2880, 120, 30]);
     expect((await job(oneHourJob))!.state).toBe('cancelled');
     expect(await reminders(done.id)).toEqual([]);
   });
 
-  it('rejects hours that are not offered', async () => {
+  it('rejects times that are not offered', async () => {
     const u = await signUp(app);
-    const res = await setHours(u, [5]);
+    const res = await setMinutes(u, [45]);
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
   });
@@ -240,7 +240,7 @@ describe('keeping reminders in sync with the task', () => {
       await call(u, 'POST', `/api/tasks/${t.id}/snooze`, { option: '1h' })
     ).json();
     const [r] = await reminders(t.id);
-    expect(r).toMatchObject({ hoursBefore: null, sentAt: null });
+    expect(r).toMatchObject({ minutesBefore: null, sentAt: null });
     expect((await job(r!.jobId))!.startAfter.toISOString()).toBe(snoozed.nextReminderAt);
   });
 });

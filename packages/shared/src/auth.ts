@@ -61,28 +61,31 @@ export const meSchema = z.object({
   notifyInApp: z.boolean(),
   notifyPush: z.boolean(),
   notifyEmail: z.boolean(),
-  /** Hours before each task's due time, largest first. */
-  reminderHours: z.array(z.number().int()),
+  /** Minutes before each task's due time, largest first. */
+  reminderMinutes: z.array(z.number().int()),
   createdAt: z.iso.datetime(),
 });
 export type Me = z.infer<typeof meSchema>;
 
-/** Reminder choices: hours before a task's due time (all-day tasks: before 6:00 that day). */
-export const REMINDER_HOURS = [1, 2, 3, 6, 12, 24, 48] as const;
-export type ReminderHours = (typeof REMINDER_HOURS)[number];
+/**
+ * Reminder choices, in minutes before a task's due time (all-day tasks: before 6:00 that day):
+ * 30 minutes, then 1, 2, 3, 6, 12, 24 and 48 hours.
+ */
+export const REMINDER_MINUTES = [30, 60, 120, 180, 360, 720, 1440, 2880] as const;
+export type ReminderMinutes = (typeof REMINDER_MINUTES)[number];
 
-/** Any subset of `REMINDER_HOURS` (empty = no reminders). */
-export const reminderHoursSchema = z
+/** Any subset of `REMINDER_MINUTES` (empty = no reminders). */
+export const reminderMinutesSchema = z
   .array(
     z
       .number()
       .int()
-      .refine((h) => (REMINDER_HOURS as readonly number[]).includes(h), {
-        message: `Choose from ${REMINDER_HOURS.join(', ')} hours`,
+      .refine((m) => (REMINDER_MINUTES as readonly number[]).includes(m), {
+        message: `Choose from ${REMINDER_MINUTES.join(', ')} minutes`,
       }),
   )
-  .max(REMINDER_HOURS.length)
-  .transform((hours) => [...new Set(hours)].sort((a, b) => b - a));
+  .max(REMINDER_MINUTES.length)
+  .transform((minutes) => [...new Set(minutes)].sort((a, b) => b - a));
 
 export const updateMeSchema = z
   .object({
@@ -92,8 +95,8 @@ export const updateMeSchema = z
     notifyInApp: z.boolean(),
     notifyPush: z.boolean(),
     notifyEmail: z.boolean(),
-    /** Hours before each task's due time to send reminders. */
-    reminderHours: reminderHoursSchema,
+    /** Minutes before each task's due time to send reminders. */
+    reminderMinutes: reminderMinutesSchema,
   })
   .partial();
 export type UpdateMeInput = z.infer<typeof updateMeSchema>;

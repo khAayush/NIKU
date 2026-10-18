@@ -47,10 +47,16 @@ export const PRIORITY_LABEL: Record<Task['priority'], string> = {
   HIGH: 'High',
 };
 
-/** "1 hour before", "24 and 1 hours before", "48, 24 and 1 hours before". */
-export function formatReminderHours(hours: number[]): string {
-  const sorted = [...hours].sort((a, b) => b - a);
-  if (sorted.length === 1) return `${sorted[0]} hour${sorted[0] === 1 ? '' : 's'} before`;
-  const head = sorted.slice(0, -1).join(', ');
-  return `${head} and ${sorted.at(-1)} hours before`;
+/** A reminder time as a short label: "30 minutes", "1 hour", "24 hours". */
+export function reminderLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes} minutes`;
+  const hours = minutes / 60;
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+}
+
+/** "1 hour before", "24 hours, 1 hour and 30 minutes before". */
+export function formatReminders(minutes: number[]): string {
+  const labels = [...minutes].sort((a, b) => b - a).map(reminderLabel);
+  if (labels.length === 1) return `${labels[0]} before`;
+  return `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)} before`;
 }

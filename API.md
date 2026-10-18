@@ -145,7 +145,7 @@ The signed-in user's profile and settings.
   "notifyInApp": true,
   "notifyPush": false,
   "notifyEmail": true,
-  "reminderHours": [24, 1],
+  "reminderMinutes": [1440, 60],
   "createdAt": "2026-10-17T16:05:58.248Z"
 }
 ```
@@ -153,11 +153,11 @@ The signed-in user's profile and settings.
 ### `PATCH /api/me`
 
 Updates any of `name`, `timezone`, the reminder channels `notifyInApp`, `notifyPush`,
-`notifyEmail` (booleans), and `reminderHours`. Other fields are ignored.
+`notifyEmail` (booleans), and `reminderMinutes`. Other fields are ignored.
 
-`reminderHours`: when to remind about **every** task with a due date, in hours before the due
-time. Any subset of `1, 2, 3, 6, 12, 24, 48` (`[]` = no reminders); duplicates are removed and it
-is returned largest first. New users start with `[1]`. Changing it (or `timezone`) immediately
+`reminderMinutes`: when to remind about **every** task with a due date, in minutes before the
+due time. Any subset of `30, 60, 120, 180, 360, 720, 1440, 2880` (30 minutes up to 48 hours) (`[]` = no reminders); duplicates are removed and it
+is returned largest first. New users start with `[60]`. Changing it (or `timezone`) immediately
 reschedules the reminders of all open tasks.
 
 ```json
@@ -326,7 +326,7 @@ Marks the task completed. For a repeating task, also creates its next occurrence
 - counted from the due date, never from the completion time, on the user's local calendar (wall-clock time is kept across DST changes);
 - monthly tasks keep their original day of the month, using the last day of shorter months;
 - if occurrences were missed, only the next one that isn't already past due is created;
-- the new occurrence gets reminders from the user's `reminderHours`.
+- the new occurrence gets reminders from the user's `reminderMinutes`.
 
 **200** `{ "task": Task, "next": Task | null }`. Completing an already-completed task changes
 nothing and returns `next: null` (also when several completions arrive at once, e.g. a double
@@ -353,8 +353,8 @@ is kept.)
 
 ## Reminders
 
-Reminders come from the user's settings (`reminderHours`, see `PATCH /api/me`): every open
-task with a due date gets one reminder per chosen hour, at that many hours before the due time
+Reminders come from the user's settings (`reminderMinutes`, see `PATCH /api/me`): every open
+task with a due date gets one reminder per chosen time, that many minutes before the due time
 (all-day tasks: before **6:00** on their day). Reminder times already in the past when a task is
 created or changed are skipped. They are scheduled on the server (pg-boss) and kept in sync when
 the due date, the task's status or the settings change; snoozes add one-off reminders.

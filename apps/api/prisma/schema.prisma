@@ -69,22 +69,22 @@ model Task {
   @@map("task")
 }
 
-/// One scheduled reminder for a task: from the user's settings (`hoursBefore`) or a snooze
-/// (`hoursBefore` null). Kept in sync with the task's due date and the user's settings.
+/// One scheduled reminder for a task: from the user's settings (`minutesBefore`) or a snooze
+/// (`minutesBefore` null). Kept in sync with the task's due date and the user's settings.
 model TaskReminder {
-  id          String    @id @default(uuid())
-  taskId      String
-  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  /// Hours before the due time (from settings); null for a one-off snooze.
-  hoursBefore Int?
-  remindAt    DateTime  @db.Timestamptz(3)
+  id            String    @id @default(uuid())
+  taskId        String
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  /// Minutes before the due time (from settings); null for a one-off snooze.
+  minutesBefore Int?
+  remindAt      DateTime  @db.Timestamptz(3)
   /// pg-boss job that fires at `remindAt`.
-  jobId       String?
+  jobId         String?
   /// Set once delivered (de-duplication and startup catch-up).
-  sentAt      DateTime? @db.Timestamptz(3)
-  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  sentAt        DateTime? @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
 
-  @@unique([taskId, hoursBefore])
+  @@unique([taskId, minutesBefore])
   @@index([remindAt])
   @@map("task_reminder")
 }
@@ -119,8 +119,8 @@ model User {
   notifyInApp       Boolean            @default(true)
   notifyPush        Boolean            @default(false)
   notifyEmail       Boolean            @default(true)
-  /// Reminders for every task with a due date, in hours before the due time.
-  reminderHours     Int[]              @default([1])
+  /// Reminders for every task with a due date, in minutes before the due time.
+  reminderMinutes   Int[]              @default([60])
   lists             List[]
   tasks             Task[]
   pushSubscriptions PushSubscription[]

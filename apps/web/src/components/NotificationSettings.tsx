@@ -1,4 +1,4 @@
-import { REMINDER_HOURS, type Me, type UpdateMeInput } from '@todo/shared';
+import { REMINDER_MINUTES, type Me, type UpdateMeInput } from '@todo/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { ME_KEY, updateMe } from '../api/auth';
@@ -8,6 +8,7 @@ import {
   subscribeToPush,
   unsubscribeFromPush,
 } from '../lib/push';
+import { reminderLabel } from '../lib/format';
 import { errorMessage } from './ui';
 
 function Toggle({
@@ -89,12 +90,12 @@ export function NotificationSettings({ me }: { me: Me }) {
       }
     });
 
-  const toggleHour = (hour: number) =>
+  const toggleReminder = (minutes: number) =>
     run(() =>
       save({
-        reminderHours: me.reminderHours.includes(hour)
-          ? me.reminderHours.filter((h) => h !== hour)
-          : [...me.reminderHours, hour],
+        reminderMinutes: me.reminderMinutes.includes(minutes)
+          ? me.reminderMinutes.filter((m) => m !== minutes)
+          : [...me.reminderMinutes, minutes],
       }),
     );
 
@@ -107,27 +108,27 @@ export function NotificationSettings({ me }: { me: Me }) {
           from 6:00 that day.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {REMINDER_HOURS.map((hour) => {
-            const on = me.reminderHours.includes(hour);
+          {REMINDER_MINUTES.map((minutes) => {
+            const on = me.reminderMinutes.includes(minutes);
             return (
               <button
-                key={hour}
+                key={minutes}
                 type="button"
                 aria-pressed={on}
                 disabled={busy}
-                onClick={() => toggleHour(hour)}
+                onClick={() => toggleReminder(minutes)}
                 className={`rounded-full border px-4 py-2 text-sm transition-colors disabled:opacity-60 ${
                   on
                     ? 'border-neutral-950 bg-neutral-950 text-white'
                     : 'border-neutral-200 text-neutral-700 hover:border-neutral-400 hover:text-neutral-950'
                 }`}
               >
-                {hour} {hour === 1 ? 'hour' : 'hours'}
+                {reminderLabel(minutes)}
               </button>
             );
           })}
         </div>
-        {!me.reminderHours.length && (
+        {!me.reminderMinutes.length && (
           <p className="mt-3 text-xs text-neutral-500">
             No reminders selected: you won't be reminded about tasks.
           </p>

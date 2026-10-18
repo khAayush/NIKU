@@ -36,11 +36,11 @@ Inside `apps/api/src`, code is organised by feature module (`auth/`, `tasks/`, `
 - Due date required unless priority is Low. Deleting a list sets its tasks' list to null.
 - Recurrence is computed in the user's timezone from the **due date** (or the reminder time when there is no due date), never from the completion date. Only one next occurrence, always in the future.
 - Monthly recurrence keeps the original day (`recurrenceDay`) and clamps to month end without drifting. A repeating task needs a due date.
-- Reminders are **not** set per task: they come from the user's `reminderHours` (1/2/3/6/12/24/48 h before the due time; all-day tasks count back from 06:00). Snooze adds a one-off `TaskReminder` (`hoursBefore` null), never changes `dueAt`.
+- Reminders are **not** set per task: they come from the user's `reminderMinutes` (30 min, 1/2/3/6/12/24/48 h before the due time, stored in minutes; all-day tasks count back from 06:00). Snooze adds a one-off `TaskReminder` (`minutesBefore` null), never changes `dueAt`.
 
 ### Reminders
 
-- One `TaskReminder` row + pg-boss job per reminder. `syncTaskReminders(taskId)` reconciles them after any change to a task's due date/status; `syncUserReminders(userId)` after `reminderHours`/timezone changes. Past times are skipped, not sent late.
+- One `TaskReminder` row + pg-boss job per reminder. `syncTaskReminders(taskId)` reconciles them after any change to a task's due date/status; `syncUserReminders(userId)` after `reminderMinutes`/timezone changes. Past times are skipped, not sent late.
 - Delivery fans out to the user's enabled channels: Socket.IO, Web Push, email. Failures are retried by pg-boss and logged.
 - On startup, catch up on reminders that came due while the server was down.
 

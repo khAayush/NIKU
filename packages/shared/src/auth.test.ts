@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isValidTimezone, reminderHoursSchema, signUpSchema } from './auth.js';
+import { isValidTimezone, reminderMinutesSchema, signUpSchema } from './auth.js';
 
 describe('isValidTimezone', () => {
   it.each(['UTC', 'Europe/London', 'America/New_York', 'Asia/Kolkata'])('accepts %s', (tz) => {
@@ -26,12 +26,12 @@ describe('signUpSchema', () => {
   });
 });
 
-describe('reminderHoursSchema', () => {
-  it('accepts the preset hours, de-duplicated and largest first', () => {
-    expect(reminderHoursSchema.parse([1, 24, 1, 48])).toEqual([48, 24, 1]);
-    expect(reminderHoursSchema.parse([])).toEqual([]);
+describe('reminderMinutesSchema', () => {
+  it('accepts the preset minutes, de-duplicated and largest first', () => {
+    expect(reminderMinutesSchema.parse([30, 1440, 30, 2880, 60])).toEqual([2880, 1440, 60, 30]);
+    expect(reminderMinutesSchema.parse([])).toEqual([]);
   });
-  it.each([[[5]], [[0]], [[72]], [[1.5]]])('rejects %j', (hours) => {
-    expect(reminderHoursSchema.safeParse(hours).success).toBe(false);
+  it.each([[[45]], [[0]], [[1]], [[4320]], [[30.5]]])('rejects %j', (minutes) => {
+    expect(reminderMinutesSchema.safeParse(minutes).success).toBe(false);
   });
 });

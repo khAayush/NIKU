@@ -132,7 +132,7 @@ describe('POST /api/tasks/:id/snooze', () => {
       where: { taskId: t.id },
       orderBy: { remindAt: 'asc' },
     });
-    expect(reminders.map((r) => r.hoursBefore)).toEqual([null, 1]);
+    expect(reminders.map((r) => r.minutesBefore)).toEqual([null, 60]);
     expect(reminders[1]!.remindAt.getTime()).toBe(due.getTime() - 3_600_000);
   });
 

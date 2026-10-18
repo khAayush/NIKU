@@ -8,10 +8,10 @@ export interface ReminderJobData {
   remindAt: string;
 }
 
-/** All-day tasks count "hours before" back from this local hour on their day. */
+/** All-day tasks count "minutes before" back from this local hour on their day. */
 export const ALL_DAY_REMINDER_HOUR = 6;
 
-/** The moment "X hours before" counts back from: the due time, or 6:00 for all-day tasks. */
+/** The moment "X minutes before" counts back from: the due time, or 6:00 for all-day tasks. */
 export function reminderBase(dueAt: Date, dueAllDay: boolean, tz: string): Date {
   if (!dueAllDay) return dueAt;
   return DateTime.fromJSDate(dueAt, { zone: tz })
@@ -19,15 +19,15 @@ export function reminderBase(dueAt: Date, dueAllDay: boolean, tz: string): Date 
     .toJSDate();
 }
 
-/** When each of the user's reminders fires for a task, keyed by hours before. */
+/** When each of the user's reminders fires for a task, keyed by minutes before. */
 export function reminderTimes(
   dueAt: Date,
   dueAllDay: boolean,
   tz: string,
-  hours: number[],
+  minutes: number[],
 ): Map<number, Date> {
   const base = reminderBase(dueAt, dueAllDay, tz).getTime();
-  return new Map(hours.map((h) => [h, new Date(base - h * 3_600_000)]));
+  return new Map(minutes.map((m) => [m, new Date(base - m * 60_000)]));
 }
 
 async function schedule(reminderId: string, remindAt: Date): Promise<string | null> {
@@ -49,26 +49,26 @@ async function cancel(jobId: string | null) {
 export async function syncTaskReminders(taskId: string, now = new Date()): Promise<void> {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    include: { reminders: true, user: { select: { timezone: true, reminderHours: true } } },
+    include: { reminders: true, user: { select: { timezone: true, reminderMinutes: true } } },
   });
   if (!task) return;
 
   const wanted =
     task.status === 'OPEN' && task.dueAt
-      ? reminderTimes(task.dueAt, task.dueAllDay, task.user.timezone, task.user.reminderHours)
+      ? reminderTimes(task.dueAt, task.dueAllDay, task.user.timezone, task.user.reminderMinutes)
       : new Map<number, Date>();
 
   for (const r of task.reminders) {
     // Snoozes stay until delivered, unless the task is no longer open.
-    if (r.hoursBefore === null) {
+    if (r.minutesBefore === null) {
       if (task.status !== 'OPEN') {
         await cancel(r.jobId);
         await prisma.taskReminder.delete({ where: { id: r.id } });
       }
       continue;
     }
-    const at = wanted.get(r.hoursBefore);
-    wanted.delete(r.hoursBefore);
+    const at = wanted.get(r.minutesBefore);
+    wanted.delete(r.minutesBefore);
     if (at && at.getTime() === r.remindAt.getTime()) continue; // unchanged
 
     await cancel(r.jobId);
@@ -83,10 +83,10 @@ export async function syncTaskReminders(taskId: string, now = new Date()): Promi
     }
   }
 
-  for (const [hoursBefore, at] of wanted) {
+  for (const [minutesBefore, at] of wanted) {
     if (at <= now) continue;
     const reminder = await prisma.taskReminder.create({
-      data: { taskId, hoursBefore, remindAt: at },
+      data: { taskId, minutesBefore, remindAt: at },
     });
     const jobId = await schedule(reminder.id, at);
     await prisma.taskReminder.update({ where: { id: reminder.id }, data: { jobId } });
@@ -114,7 +114,7 @@ export async function cancelTaskReminders(taskId: string): Promise<void> {
 /** Snooze: replaces any pending snooze of the task with a one-off reminder at `at`. */
 export async function snoozeReminder(taskId: string, at: Date): Promise<void> {
   const pending = await prisma.taskReminder.findMany({
-    where: { taskId, hoursBefore: null, sentAt: null },
+    where: { taskId, minutesBefore: null, sentAt: null },
   });
   for (const r of pending) await cancel(r.jobId);
   await prisma.taskReminder.deleteMany({ where: { id: { in: pending.map((r) => r.id) } } });

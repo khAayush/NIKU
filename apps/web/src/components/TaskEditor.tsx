@@ -18,7 +18,7 @@ import { useId, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useMe } from '../api/auth';
 import { useCreateTask, useDeleteTask, useLists, useUpdateTask } from '../api/tasks';
-import { PRIORITY_LABEL, RECURRENCE_LABEL, formatReminderHours } from '../lib/format';
+import { PRIORITY_LABEL, RECURRENCE_LABEL, formatReminders } from '../lib/format';
 import { Modal } from './Modal';
 import { Alert, Button, Field, SelectField, errorMessage, inputClass, validate } from './ui';
 
@@ -222,8 +222,8 @@ export function TaskForm({
       </div>
       <p className="text-xs text-neutral-500">
         {values.dueDate
-          ? me.reminderHours.length
-            ? `Reminders ${formatReminderHours(me.reminderHours)}.`
+          ? me.reminderMinutes.length
+            ? `Reminders ${formatReminders(me.reminderMinutes)}.`
             : 'Reminders are off.'
           : 'Add a due date to get reminders.'}{' '}
         <Link to="/settings" className="text-neutral-950 underline-offset-2 hover:underline">
