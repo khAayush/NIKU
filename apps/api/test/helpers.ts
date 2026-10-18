@@ -1,4 +1,5 @@
 import type { InjectOptions, LightMyRequestResponse } from 'fastify';
+import type { Prisma } from '../src/generated/prisma/client.js';
 import { buildApp } from '../src/app.js';
 import { authLimiter } from '../src/auth/rate-limit.js';
 import { outbox } from '../src/lib/mailer.js';
@@ -53,4 +54,12 @@ export async function signUp(app: TestApp, overrides: Parameters<typeof newUser>
   const res = await request(app, { method: 'POST', url: '/api/auth/sign-up/email', payload: user });
   if (res.statusCode !== 200) throw new Error(`sign-up failed: ${res.statusCode} ${res.body}`);
   return { ...user, id: res.json().user.id as string, cookie: cookieFrom(res) };
+}
+
+/**
+ * Inserts a task straight into the database. The API refuses due dates in the past, so this is
+ * how tests get overdue tasks (which in real use happen when time passes).
+ */
+export function insertTask(userId: string, data: Omit<Prisma.TaskUncheckedCreateInput, 'userId'>) {
+  return prisma.task.create({ data: { userId, ...data } });
 }

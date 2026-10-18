@@ -19,14 +19,22 @@ export function CalendarPage() {
   const [params, setParams] = useSearchParams();
   const today = toLocalDate(new Date(), tz);
 
+  // Links can be edited by hand: anything that isn't a real month/day falls back to today.
   const monthParam = params.get('month');
-  const month = DateTime.fromFormat(
-    monthParam && MONTH_PARAM.test(monthParam) ? monthParam : today.slice(0, 7),
-    'yyyy-MM',
-    { zone: tz },
-  );
+  const parsedMonth =
+    monthParam && MONTH_PARAM.test(monthParam)
+      ? DateTime.fromFormat(monthParam, 'yyyy-MM', { zone: tz })
+      : null;
+  const month = parsedMonth?.isValid
+    ? parsedMonth
+    : DateTime.fromFormat(today.slice(0, 7), 'yyyy-MM', { zone: tz });
   const dayParam = params.get('day');
-  const selected = dayParam && DAY_PARAM.test(dayParam) ? dayParam : today;
+  const selected =
+    dayParam &&
+    DAY_PARAM.test(dayParam) &&
+    DateTime.fromFormat(dayParam, DATE_FORMAT, { zone: tz }).isValid
+      ? dayParam
+      : today;
 
   const gridStart = month.startOf('month').minus({ days: month.startOf('month').weekday - 1 });
   const gridEnd = month.endOf('month').plus({ days: 7 - month.endOf('month').weekday });
@@ -121,7 +129,7 @@ export function CalendarPage() {
         </p>
       </section>
 
-      <DayPanel date={selected} tz={tz} />
+      <DayPanel date={selected} tz={tz} isPast={selected < today} />
     </div>
   );
 }
@@ -190,7 +198,7 @@ function DayCell({
   );
 }
 
-function DayPanel({ date, tz }: { date: string; tz: string }) {
+function DayPanel({ date, tz, isPast }: { date: string; tz: string; isPast: boolean }) {
   const { data: tasks, isPending, isError } = useDayTasks(date);
   const { openNew, openEdit, editor } = useTaskEditor({ dueDate: date });
   const d = DateTime.fromFormat(date, DATE_FORMAT, { zone: tz });
@@ -204,7 +212,13 @@ function DayPanel({ date, tz }: { date: string; tz: string }) {
           </p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight">{d.toFormat('cccc')}</h2>
         </div>
-        <Button onClick={openNew}>+ Add</Button>
+        <Button
+          onClick={openNew}
+          disabled={isPast}
+          title={isPast ? 'This day has passed. Pick today or a later day.' : undefined}
+        >
+          + Add
+        </Button>
       </div>
       {isPending ? null : isError ? (
         <LoadError />

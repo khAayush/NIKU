@@ -28,13 +28,11 @@ export function getBoss(): Promise<PgBoss> {
       retryBackoff: true,
       retryDelayMax: 3600,
     };
-    // Reminders can be scheduled far ahead; the default retention (14 days) would delete them
-    // before they run. Startup catch-up covers anything that is still missed.
-    await boss.createQueue(QUEUES.reminder, {
-      ...retries,
-      retentionSeconds: 400 * DAY,
-      expireInSeconds: 60,
-    });
+    // Reminders can be scheduled up to 5 years ahead (MAX_DUE_YEARS); the default retention
+    // (14 days) would delete them before they run. updateQueue applies this to existing installs.
+    const reminderQueue = { ...retries, retentionSeconds: 6 * 366 * DAY, expireInSeconds: 60 };
+    await boss.createQueue(QUEUES.reminder, reminderQueue);
+    await boss.updateQueue(QUEUES.reminder, reminderQueue);
     await boss.createQueue(QUEUES.push, { ...retries, expireInSeconds: 60 });
     await boss.createQueue(QUEUES.email, { ...retries, expireInSeconds: 120 });
     return boss;

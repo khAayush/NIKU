@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app.js';
 import { prisma } from '../lib/prisma.js';
-import { request, resetState, signUp, type TestApp } from '../../test/helpers.js';
+import { insertTask, request, resetState, signUp, type TestApp } from '../../test/helpers.js';
 
 let app: TestApp;
 beforeAll(async () => {
@@ -227,7 +227,11 @@ describe('completing tasks', () => {
   it('creates only one future occurrence when completed late', async () => {
     const u = await signUp(app, { timezone: TZ });
     const due = DateTime.now().setZone(TZ).minus({ days: 5 }).startOf('minute');
-    const t = await createTask(u, { title: 'Daily', dueAt: due.toISO(), recurrence: 'DAILY' });
+    const t = await insertTask(u.id, {
+      title: 'Daily',
+      dueAt: due.toJSDate(),
+      recurrence: 'DAILY',
+    });
 
     const { next } = (await api(u).complete(t.id)).json();
     expect(new Date(next.dueAt).getTime()).toBeGreaterThan(Date.now());
@@ -301,13 +305,13 @@ describe('Today and Overdue', () => {
       .minus({ days: 1 })
       .toFormat('yyyy-MM-dd');
 
-    const pastTimed = await createTask(u, {
+    const pastTimed = await insertTask(u.id, {
       title: 'Past timed',
-      dueAt: iso(new Date(now.getTime() - 3 * 24 * HOUR)),
+      dueAt: new Date(now.getTime() - 3 * 24 * HOUR),
     });
-    const allDayYesterday = await createTask(u, {
+    const allDayYesterday = await insertTask(u.id, {
       title: 'All-day yesterday',
-      dueAt: iso(localToUtc(yesterdayStr, null, TZ)!),
+      dueAt: localToUtc(yesterdayStr, null, TZ)!,
       dueAllDay: true,
     });
     const allDayToday = await createTask(u, {
@@ -353,9 +357,9 @@ describe('Today and Overdue', () => {
       dueAt: iso(localToUtc(kiriDate, null, KIRI)!),
       dueAllDay: true,
     });
-    await createTask(kiri, {
-      title: 'hono-date',
-      dueAt: iso(localToUtc(honoDate, null, KIRI)!),
+    await insertTask(kiri.id, {
+      title: 'hono-date', // yesterday for Kiritimati
+      dueAt: localToUtc(honoDate, null, KIRI)!,
       dueAllDay: true,
     });
     await createTask(hono, {
@@ -376,5 +380,99 @@ describe('Today and Overdue', () => {
     const h = (await api(hono).today()).json();
     expect(titles(h.today)).toEqual(['hono-date']);
     expect(titles(h.overdue)).toEqual([]); // 'kiri-date' is tomorrow for Honolulu
+  });
+});
+
+describe('QA regressions', () => {
+  it('rejects a due time that has already passed', async () => {
+    const u = await signUp(app, { timezone: TZ });
+    const res = await api(u).create({
+      title: 'Too late',
+      dueAt: iso(new Date(Date.now() - 2 * HOUR)),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: 'That time has already passed',
+    });
+  });
+
+  it('rejects an all-day date before today but accepts today', async () => {
+    const u = await signUp(app, { timezone: TZ });
+    const day = (n: number) => DateTime.now().setZone(TZ).plus({ days: n }).toFormat('yyyy-MM-dd');
+    const allDay = (n: number) =>
+      api(u).create({ title: 'X', dueAt: iso(localToUtc(day(n), null, TZ)!), dueAllDay: true });
+    expect((await allDay(-1)).json().error.message).toBe('That day has already passed');
+    expect((await allDay(0)).statusCode).toBe(201);
+  });
+
+  it('rejects moving a task into the past, but still allows editing an overdue task', async () => {
+    const u = await signUp(app, { timezone: TZ });
+    const future = await createTask(u, { title: 'A', dueAt: iso(new Date(Date.now() + HOUR)) });
+    const moved = await api(u).update(future.id, { dueAt: iso(new Date(Date.now() - HOUR)) });
+    expect(moved.statusCode).toBe(400);
+
+    const overdue = await insertTask(u.id, {
+      title: 'Old',
+      dueAt: new Date(Date.now() - 24 * HOUR),
+    });
+    const renamed = await api(u).update(overdue.id, { title: 'Old, renamed', priority: 'HIGH' });
+    expect(renamed.statusCode).toBe(200);
+    // Sending the same (past) due date back unchanged is fine too, e.g. from the edit form.
+    const same = await api(u).update(overdue.id, { dueAt: iso(overdue.dueAt!), title: 'Again' });
+    expect(same.statusCode).toBe(200);
+  });
+
+  it('rejects due dates more than 5 years ahead', async () => {
+    const u = await signUp(app);
+    const res = await api(u).create({ title: 'Far', dueAt: '9999-12-31T10:00:00Z' });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.message).toBe('Pick a date within the next 5 years');
+  });
+
+  it('creates only one next occurrence when completed several times at once', async () => {
+    const u = await signUp(app);
+    const t = await createTask(u, {
+      title: 'Daily',
+      dueAt: iso(new Date(Date.now() + 2 * HOUR)),
+      recurrence: 'DAILY',
+    });
+    const results = await Promise.all([1, 2, 3].map(() => api(u).complete(t.id)));
+    expect(results.every((r) => r.statusCode === 200)).toBe(true);
+    expect(results.filter((r) => r.json().next).length).toBe(1);
+    expect(await prisma.task.count({ where: { title: 'Daily' } })).toBe(2);
+  });
+
+  it('searches for % and _ literally', async () => {
+    const u = await signUp(app);
+    await createTask(u, { title: 'Raise prices 10%', priority: 'LOW' });
+    await createTask(u, { title: 'snake_case rename', priority: 'LOW' });
+    await createTask(u, { title: 'Plain task', priority: 'LOW' });
+    const titles = async (q: string) =>
+      ((await api(u).list(`?q=${encodeURIComponent(q)}`)).json().items as Task[]).map(
+        (t) => t.title,
+      );
+    expect(await titles('%')).toEqual(['Raise prices 10%']);
+    expect(await titles('_')).toEqual(['snake_case rename']);
+  });
+
+  it('keeps all-day tasks on the same day when the timezone changes', async () => {
+    const u = await signUp(app, { timezone: 'Europe/London' });
+    const day = DateTime.now().setZone('Europe/London').plus({ days: 10 }).toFormat('yyyy-MM-dd');
+    const t = await createTask(u, {
+      title: 'All day',
+      dueAt: iso(localToUtc(day, null, 'Europe/London')!),
+      dueAllDay: true,
+    });
+    for (const tz of ['America/New_York', 'Asia/Tokyo', 'Pacific/Kiritimati']) {
+      await request(app, {
+        method: 'PATCH',
+        url: '/api/me',
+        cookie: u.cookie,
+        payload: { timezone: tz },
+      });
+      const after: Task = (await api(u).get(t.id)).json();
+      expect(toLocalDate(new Date(after.dueAt!), tz)).toBe(day);
+    }
   });
 });

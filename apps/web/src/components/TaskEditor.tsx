@@ -2,6 +2,7 @@ import {
   PRIORITIES,
   RECURRENCES,
   createTaskSchema,
+  dueDateProblem,
   localToUtc,
   toLocalDate,
   toLocalTime,
@@ -151,6 +152,17 @@ export function TaskForm({
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     const { input, errors: dateErrors } = toInput(values, tz);
+    // Same rule as the server: a new or changed due date can't be in the past (or > 5 years).
+    const dueChanged =
+      !task || input.dueAt !== task.dueAt || Boolean(input.dueAllDay) !== task.dueAllDay;
+    if (input.dueAt && dueChanged && !dateErrors.dueAt) {
+      const problem = dueDateProblem(
+        { dueAt: new Date(input.dueAt), dueAllDay: Boolean(input.dueAllDay) },
+        new Date(),
+        tz,
+      );
+      if (problem) dateErrors.dueAt = problem;
+    }
     const { data, errors: schemaErrors } = validate(createTaskSchema, input);
     const all = { ...schemaErrors, ...dateErrors };
     setErrors(all);
@@ -192,6 +204,7 @@ export function TaskForm({
         <Field
           label="Due date"
           type="date"
+          min={toLocalDate(new Date(), tz)}
           value={values.dueDate}
           onChange={(e) => set('dueDate', e.target.value)}
           error={errors.dueAt}

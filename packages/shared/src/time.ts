@@ -52,3 +52,28 @@ export function isPastDue(
   if (due.dueAllDay) return due.dueAt < startOfLocalDay(now, tz);
   return due.dueAt < now;
 }
+
+/** A new or changed due date may be at most this far ahead. */
+export const MAX_DUE_YEARS = 5;
+/** A timed due date may lag "now" by this much (slow form submits, clock skew). */
+const PAST_GRACE_MS = 60_000;
+
+/**
+ * Why a due date can't be set (null when it's fine): it must not have passed already
+ * (all-day: today is fine) and must be within `MAX_DUE_YEARS`. Only applies when a due date is
+ * set or changed; existing overdue tasks can still be edited otherwise.
+ */
+export function dueDateProblem(
+  due: { dueAt: Date; dueAllDay: boolean },
+  now: Date,
+  tz: string,
+): string | null {
+  const past = due.dueAllDay
+    ? due.dueAt < startOfLocalDay(now, tz)
+    : due.dueAt.getTime() < now.getTime() - PAST_GRACE_MS;
+  if (past) return due.dueAllDay ? 'That day has already passed' : 'That time has already passed';
+  const max = new Date(now);
+  max.setUTCFullYear(max.getUTCFullYear() + MAX_DUE_YEARS);
+  if (due.dueAt > max) return `Pick a date within the next ${MAX_DUE_YEARS} years`;
+  return null;
+}

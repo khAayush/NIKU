@@ -217,7 +217,10 @@ A task object:
 - `isOverdue` is computed by the server: open, and past `dueAt` (all-day: the day has ended in the
   user's timezone).
 - Rules: `title` 1–200 chars; a `dueAt` is required unless `priority` is `LOW`; a repeating task
-  needs a `dueAt`; `listId` must be one of your lists (else 400 `INVALID_LIST`).
+  needs a `dueAt`; a new or changed `dueAt` must not have passed (timed: 1 minute of grace;
+  all-day: today is fine) and must be within 5 years (400 `VALIDATION_ERROR`, message e.g.
+  "That time has already passed"). Overdue tasks can still be edited as long as their due date
+  isn't changed; `listId` must be one of your lists (else 400 `INVALID_LIST`).
 
 ### `GET /api/tasks`
 
@@ -228,6 +231,8 @@ All tasks / search. Query parameters (all optional):
 | `listId` | a list id, or `none` for tasks without a list | all lists |
 | `status` | `open`, `completed`, `all`                    | `open`    |
 | `q`      | text; case-insensitive search in titles       | —         |
+
+`q` is matched literally (`%` and `_` are not wildcards).
 
 **200** `{ "items": [Task, ...] }` sorted by due date (undated last), then priority (high first),
 then creation time. At most 500 results.
@@ -324,7 +329,8 @@ Marks the task completed. For a repeating task, also creates its next occurrence
 - the new occurrence gets reminders from the user's `reminderHours`.
 
 **200** `{ "task": Task, "next": Task | null }`. Completing an already-completed task changes
-nothing and returns `next: null`.
+nothing and returns `next: null` (also when several completions arrive at once, e.g. a double
+click: only one next occurrence is ever created).
 
 ### `POST /api/tasks/:id/snooze`
 

@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app.js';
 import { prisma } from '../lib/prisma.js';
-import { request, resetState, signUp, type TestApp } from '../../test/helpers.js';
+import { insertTask, request, resetState, signUp, type TestApp } from '../../test/helpers.js';
 
 let app: TestApp;
 beforeAll(async () => {
@@ -52,8 +52,8 @@ describe('GET /api/tasks/calendar', () => {
     const u = await signUp(app, { timezone: TZ });
     const yesterday = DateTime.now().setZone(TZ).minus({ days: 1 }).toFormat('yyyy-MM-dd');
     const today = toLocalDate(new Date(), TZ);
-    await createTask(u, { title: 'Late', dueAt: at(yesterday, '08:00') });
-    const done = await createTask(u, { title: 'Done late', dueAt: at(yesterday, '09:00') });
+    await insertTask(u.id, { title: 'Late', dueAt: at(yesterday, '08:00') });
+    const done = await insertTask(u.id, { title: 'Done late', dueAt: at(yesterday, '09:00') });
     await post(u, `/api/tasks/${done.id}/complete`);
     await createTask(u, { title: 'Today all day', dueAt: at(today, null), dueAllDay: true });
 

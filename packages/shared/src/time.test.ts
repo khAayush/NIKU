@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { isPastDue, localDayRange, localToUtc, toLocalDate, toLocalTime } from './time.js';
+import {
+  dueDateProblem,
+  isPastDue,
+  localDayRange,
+  localToUtc,
+  toLocalDate,
+  toLocalTime,
+} from './time.js';
 
 describe('time helpers', () => {
   it('converts a local date and time to UTC', () => {
@@ -53,5 +60,43 @@ describe('time helpers', () => {
     it('task without a due date is never overdue', () => {
       expect(isPastDue({ dueAt: null, dueAllDay: false }, now, tz)).toBe(false);
     });
+  });
+});
+
+describe('dueDateProblem', () => {
+  const tz = 'Europe/London';
+  const now = new Date('2026-06-10T12:00:00Z'); // 13:00 in London
+
+  it('rejects a time that has already passed', () => {
+    expect(
+      dueDateProblem({ dueAt: new Date('2026-06-10T11:00:00Z'), dueAllDay: false }, now, tz),
+    ).toBe('That time has already passed');
+  });
+
+  it('allows a minute of grace and any future time', () => {
+    expect(
+      dueDateProblem({ dueAt: new Date('2026-06-10T11:59:30Z'), dueAllDay: false }, now, tz),
+    ).toBeNull();
+    expect(
+      dueDateProblem({ dueAt: new Date('2026-06-10T12:30:00Z'), dueAllDay: false }, now, tz),
+    ).toBeNull();
+  });
+
+  it('allows today but not yesterday for all-day tasks', () => {
+    expect(
+      dueDateProblem({ dueAt: localToUtc('2026-06-10', null, tz)!, dueAllDay: true }, now, tz),
+    ).toBeNull();
+    expect(
+      dueDateProblem({ dueAt: localToUtc('2026-06-09', null, tz)!, dueAllDay: true }, now, tz),
+    ).toBe('That day has already passed');
+  });
+
+  it('rejects dates more than 5 years ahead', () => {
+    expect(
+      dueDateProblem({ dueAt: new Date('2031-06-01T12:00:00Z'), dueAllDay: false }, now, tz),
+    ).toBeNull();
+    expect(
+      dueDateProblem({ dueAt: new Date('2031-07-01T12:00:00Z'), dueAllDay: false }, now, tz),
+    ).toBe('Pick a date within the next 5 years');
   });
 });

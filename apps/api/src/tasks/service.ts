@@ -1,4 +1,5 @@
 import {
+  dueDateProblem,
   isPastDue,
   localDayRange,
   localToUtc,
@@ -95,6 +96,18 @@ interface DateFields {
   dueAllDay: boolean;
 }
 
+/** Rejects a due date that has already passed or is too far ahead (when one is set or changed). */
+function assertDueDateAllowed(due: { dueAt: Date | null; dueAllDay: boolean }, tz: string) {
+  if (!due.dueAt) return;
+  const problem = dueDateProblem({ dueAt: due.dueAt, dueAllDay: due.dueAllDay }, new Date(), tz);
+  if (problem) {
+    throw new AppError(400, 'VALIDATION_ERROR', problem, [{ path: 'dueAt', message: problem }]);
+  }
+}
+
+/** Escapes LIKE wildcards so a search for "%" or "_" finds those characters literally. */
+const escapeLike = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
+
 /** All-day due dates are stored as the start of that day in the user's timezone. */
 function normalizeDue(f: DateFields, tz: string) {
   if (!f.dueAt) return { dueAt: null, dueAllDay: false };
@@ -110,6 +123,7 @@ const toDate = (s: string | null) => (s ? new Date(s) : null);
 export async function createTask(user: AuthUser, input: z.output<typeof createTaskSchema>) {
   await assertOwnList(user.id, input.listId);
   const due = normalizeDue({ ...input, dueAt: toDate(input.dueAt) }, user.timezone);
+  assertDueDateAllowed(due, user.timezone);
   const row = await prisma.task.create({
     data: {
       userId: user.id,
@@ -147,6 +161,11 @@ export async function updateTask(user: AuthUser, id: string, input: UpdateTaskIn
 
   const due = normalizeDue(merged, user.timezone);
   const datesChanged = input.dueAt !== undefined || input.dueAllDay !== undefined;
+  // Only a new due date is checked, so overdue tasks can still be renamed, moved to a list, etc.
+  const dueMoved =
+    datesChanged &&
+    (due.dueAt?.getTime() !== existing.dueAt?.getTime() || due.dueAllDay !== existing.dueAllDay);
+  if (dueMoved) assertDueDateAllowed(due, user.timezone);
   await prisma.task.update({
     where: { id },
     data: {
@@ -186,11 +205,14 @@ export async function completeTask(user: AuthUser, id: string): Promise<Complete
     // Already completed: nothing to do, and never spawn a second next occurrence.
     if (existing.status === 'COMPLETED') return { task: existing, next: null, changed: false };
 
-    const task = await tx.task.update({
-      where: { id },
+    // Only the first of several simultaneous completions (e.g. a double click) gets past this:
+    // the row lock makes the others re-check `status` and update nothing.
+    const { count } = await tx.task.updateMany({
+      where: { id, status: 'OPEN' },
       data: { status: 'COMPLETED', completedAt: now },
-      include: WITH_NEXT_REMINDER,
     });
+    if (count === 0) return { task: existing, next: null, changed: false };
+    const task = await tx.task.findUniqueOrThrow({ where: { id }, include: WITH_NEXT_REMINDER });
 
     const nextDue = nextOccurrence(existing, user.timezone, now);
     const next = nextDue
@@ -212,7 +234,7 @@ export async function completeTask(user: AuthUser, id: string): Promise<Complete
     return { task, next, changed: true };
   });
 
-  if (!result.changed) return { task: toTask(result.task, user.timezone, now), next: null };
+  if (!result.changed) return { task: await reload(id, user.timezone), next: null };
   await syncTaskReminders(result.task.id); // completed: cancels its reminders
   if (result.next) await syncTaskReminders(result.next.id);
   return {
@@ -232,7 +254,7 @@ export async function listTasks(user: AuthUser, query: z.output<typeof listTasks
   const where: Prisma.TaskWhereInput = { userId: user.id };
   if (query.listId) where.listId = query.listId === 'none' ? null : query.listId;
   if (query.status !== 'all') where.status = query.status === 'open' ? 'OPEN' : 'COMPLETED';
-  if (query.q) where.title = { contains: query.q, mode: 'insensitive' };
+  if (query.q) where.title = { contains: escapeLike(query.q), mode: 'insensitive' };
 
   const rows = await prisma.task.findMany({
     where,
