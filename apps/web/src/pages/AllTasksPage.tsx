@@ -77,13 +77,13 @@ export function AllTasksPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search tasks by title"
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:outline-none sm:w-64"
+          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-neutral-950 focus:ring-2 focus:ring-neutral-950/10 focus:outline-none sm:w-64"
         />
         <select
           value={listFilter}
           onChange={(e) => update('list', e.target.value)}
           aria-label="Filter by list"
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
+          className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm"
         >
           <option value="">All lists</option>
           <option value="none">No list</option>
@@ -93,12 +93,12 @@ export function AllTasksPage() {
             </option>
           ))}
         </select>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
+        <label className="flex items-center gap-2 text-sm text-neutral-600">
           <input
             type="checkbox"
             checked={showCompleted}
             onChange={(e) => update('completed', e.target.checked ? '1' : '')}
-            className="h-4 w-4 accent-indigo-600"
+            className="h-4 w-4 accent-neutral-950"
           />
           Show completed
         </label>

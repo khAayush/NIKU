@@ -61,16 +61,16 @@ export function SignupPage() {
           error={errors.password}
           hint={`At least ${PASSWORD_MIN_LENGTH} characters. A long phrase is best.`}
         />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-neutral-500">
           Timezone: {browserTimezone()} (you can change it later in Settings)
         </p>
         <Button type="submit" disabled={busy} className="w-full">
           {busy ? 'Creating account…' : 'Sign up'}
         </Button>
       </form>
-      <p className="mt-4 text-center text-sm text-slate-600">
+      <p className="mt-4 text-center text-sm text-neutral-600">
         Already have an account?{' '}
-        <Link to="/login" className="text-indigo-600 hover:underline">
+        <Link to="/login" className="text-neutral-950 hover:underline">
           Log in
         </Link>
       </p>

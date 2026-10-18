@@ -7,7 +7,7 @@ import { PageHeader } from '../components/PageHeader';
 import { Alert, Button, errorMessage, validate } from '../components/ui';
 
 const inputClass =
-  'rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:outline-none';
+  'rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm placeholder:text-neutral-400 focus:border-neutral-950 focus:ring-4 focus:ring-neutral-950/5 focus:outline-none';
 
 export function ListsPage() {
   const { data: lists, isPending } = useLists();
@@ -54,7 +54,7 @@ export function ListsPage() {
           No lists yet. Lists are optional — tasks can live without one.
         </EmptyState>
       ) : (
-        <ul className="max-w-md divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+        <ul className="max-w-md divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
           {lists.map((l) => (
             <ListRow key={l.id} list={l} />
           ))}
@@ -123,13 +123,13 @@ function ListRow({ list }: { list: List }) {
         <div className="flex items-center gap-3">
           <Link
             to={`/all?list=${list.id}`}
-            className="flex-1 text-sm font-medium text-slate-800 hover:text-indigo-600"
+            className="flex-1 text-sm font-medium text-neutral-800 hover:text-neutral-950"
           >
             {list.name}
           </Link>
-          <span className="text-xs text-slate-500">{list.openTaskCount} open</span>
+          <span className="text-xs text-neutral-500">{list.openTaskCount} open</span>
           <button
-            className="text-sm text-indigo-600 hover:underline"
+            className="text-sm text-neutral-950 hover:underline"
             onClick={() => setMode('rename')}
           >
             Rename

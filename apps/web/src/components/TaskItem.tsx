@@ -5,10 +5,38 @@ import { formatDateTime, formatDue, RECURRENCE_LABEL } from '../lib/format';
 import { SnoozeMenu } from './SnoozeMenu';
 
 const PRIORITY_STYLE: Record<Task['priority'], string> = {
-  HIGH: 'bg-rose-50 text-rose-700 ring-rose-200',
-  MEDIUM: 'bg-amber-50 text-amber-700 ring-amber-200',
-  LOW: 'bg-slate-50 text-slate-500 ring-slate-200',
+  HIGH: 'bg-neutral-950 text-white',
+  MEDIUM: 'border border-neutral-200 text-neutral-600',
+  LOW: 'border border-neutral-200 text-neutral-500',
 };
+
+function BellIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-3 w-3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <path d="M12 6a4 4 0 1 0-8 0c0 4.5-2 6-2 6h12s-2-1.5-2-6M9.2 14a1.4 1.4 0 0 1-2.4 0" />
+    </svg>
+  );
+}
+
+function RepeatIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-3 w-3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <path d="M2.5 7V6a3 3 0 0 1 3-3h7m0 0L10.5 1M12.5 3l-2 2M13.5 9v1a3 3 0 0 1-3 3h-7m0 0 2 2m-2-2 2-2" />
+    </svg>
+  );
+}
 
 export function TaskItem({
   task,
@@ -27,34 +55,62 @@ export function TaskItem({
   const due = formatDue(task, tz);
 
   return (
-    <li className="group flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-xs hover:border-slate-300">
-      <input
-        type="checkbox"
-        checked={done}
-        disabled={setDone.isPending}
-        onChange={() => setDone.mutate({ id: task.id, done: !done })}
-        aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
-        className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-slate-300 accent-indigo-600"
-      />
+    <li className="group flex items-start gap-3.5 px-4 py-3.5 transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-neutral-50">
+      {/* Round checkbox: a real input (keyboard + screen readers), drawn as a circle. */}
+      <span className="relative mt-0.5 flex h-5 w-5 shrink-0">
+        <input
+          type="checkbox"
+          checked={done}
+          disabled={setDone.isPending}
+          onChange={() => setDone.mutate({ id: task.id, done: !done })}
+          aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
+          className="peer h-5 w-5 cursor-pointer appearance-none rounded-full border-[1.5px] border-neutral-300 transition-colors checked:border-neutral-950 checked:bg-neutral-950 hover:border-neutral-950"
+        />
+        <svg
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 m-auto h-3 w-3 text-white opacity-0 peer-checked:opacity-100"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3.5 8.5l3 3 6-7" />
+        </svg>
+      </span>
+
       <button type="button" onClick={() => onEdit(task)} className="min-w-0 flex-1 text-left">
         <div
-          className={`text-sm font-medium ${done ? 'text-slate-400 line-through' : 'text-slate-900'}`}
+          className={`text-[15px] leading-snug ${done ? 'text-neutral-400 line-through decoration-neutral-300' : 'text-neutral-950'}`}
         >
           {task.title}
         </div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
           {due && (
             <span className={task.isOverdue ? 'font-medium text-rose-600' : undefined}>
               {task.isOverdue ? `Overdue · ${due}` : due}
             </span>
           )}
           {task.remindAt && !done && (
-            <span title="Reminder">🔔 {formatDateTime(task.remindAt, tz)}</span>
+            <span title="Reminder" className="inline-flex items-center gap-1">
+              <BellIcon /> {formatDateTime(task.remindAt, tz)}
+            </span>
           )}
-          {task.recurrence !== 'NONE' && <span>↻ {RECURRENCE_LABEL[task.recurrence]}</span>}
-          {listName && <span className="rounded bg-slate-100 px-1.5 py-0.5">{listName}</span>}
+          {task.recurrence !== 'NONE' && (
+            <span className="inline-flex items-center gap-1">
+              <RepeatIcon /> {RECURRENCE_LABEL[task.recurrence]}
+            </span>
+          )}
+          {listName && (
+            <span className="rounded-full border border-neutral-200 px-2 py-px text-neutral-600">
+              {listName}
+            </span>
+          )}
           {task.priority !== 'MEDIUM' && !done && (
-            <span className={`rounded px-1.5 py-0.5 ring-1 ${PRIORITY_STYLE[task.priority]}`}>
+            <span
+              className={`rounded-full px-2 py-px text-[11px] font-medium ${PRIORITY_STYLE[task.priority]}`}
+            >
               {task.priority === 'HIGH' ? 'High' : 'Low'}
             </span>
           )}
@@ -80,15 +136,16 @@ export function TaskSection({
 }) {
   if (!tasks.length) return null;
   return (
-    <section className="space-y-2">
+    <section>
       {title && (
         <h2
-          className={`text-xs font-semibold tracking-wide uppercase ${tone === 'warning' ? 'text-rose-600' : 'text-slate-500'}`}
+          className={`mb-3 flex items-center gap-2 text-[11px] font-medium tracking-[0.15em] uppercase ${tone === 'warning' ? 'text-rose-600' : 'text-neutral-400'}`}
         >
-          {title} <span className="font-normal">({tasks.length})</span>
+          {title}
+          <span className="tabular-nums">{tasks.length}</span>
         </h2>
       )}
-      <ul className="space-y-2">
+      <ul className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
         {tasks.map((t) => (
           <TaskItem key={t.id} task={t} onEdit={onEdit} snoozable={snoozable} />
         ))}

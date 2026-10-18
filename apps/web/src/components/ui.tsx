@@ -8,10 +8,14 @@ import { useId } from 'react';
 import type { ZodType } from 'zod';
 import { ApiRequestError } from '../api/client';
 
-const inputClass =
-  'mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm ' +
-  'focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ' +
-  'aria-invalid:border-rose-400 disabled:bg-slate-100 disabled:text-slate-500';
+/** Shared look for text inputs and selects: hairline border, black focus, soft halo. */
+export const inputClass =
+  'mt-1.5 block w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm ' +
+  'text-neutral-950 placeholder:text-neutral-400 transition-colors ' +
+  'hover:border-neutral-300 focus:border-neutral-950 focus:outline-none focus:ring-4 focus:ring-neutral-950/5 ' +
+  'aria-invalid:border-rose-400 disabled:bg-neutral-50 disabled:text-neutral-500';
+
+const labelClass = 'block text-[13px] font-medium text-neutral-800';
 
 export function Field({
   label,
@@ -22,14 +26,14 @@ export function Field({
   const id = useId();
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-slate-700">
+      <label htmlFor={id} className={labelClass}>
         {label}
       </label>
       <input id={id} aria-invalid={error ? true : undefined} className={inputClass} {...props} />
       {error ? (
-        <p className="mt-1 text-xs text-rose-600">{error}</p>
+        <p className="mt-1.5 text-xs text-rose-600">{error}</p>
       ) : hint ? (
-        <p className="mt-1 text-xs text-slate-500">{hint}</p>
+        <p className="mt-1.5 text-xs text-neutral-500">{hint}</p>
       ) : null}
     </div>
   );
@@ -48,32 +52,41 @@ export function SelectField({
   const id = useId();
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-slate-700">
+      <label htmlFor={id} className={labelClass}>
         {label}
       </label>
       <select id={id} aria-invalid={error ? true : undefined} className={inputClass} {...props}>
         {children}
       </select>
-      {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-rose-600">{error}</p>}
     </div>
   );
 }
 
 type Variant = 'primary' | 'secondary' | 'danger';
 const variants: Record<Variant, string> = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-700',
-  secondary: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
-  danger: 'bg-rose-600 text-white hover:bg-rose-700',
+  primary: 'bg-neutral-950 text-white shadow-sm hover:bg-neutral-800',
+  secondary:
+    'border border-neutral-200 bg-white text-neutral-900 hover:border-neutral-300 hover:bg-neutral-50',
+  danger: 'bg-rose-600 text-white shadow-sm hover:bg-rose-700',
+};
+
+const sizes = {
+  md: 'px-5 py-2.5',
+  sm: 'px-4 py-2',
+  /** Square button for a single icon; give it an aria-label. */
+  icon: 'h-10 w-10',
 };
 
 export function Button({
   variant = 'primary',
+  size = 'md',
   className = '',
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: keyof typeof sizes }) {
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium shadow-sm disabled:opacity-60 ${variants[variant]} ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full text-sm font-medium tracking-tight transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${sizes[size]} ${variants[variant]} ${className}`}
       {...props}
     />
   );
@@ -89,11 +102,11 @@ export function Alert({
   const style =
     kind === 'error'
       ? 'border-rose-200 bg-rose-50 text-rose-700'
-      : 'border-emerald-200 bg-emerald-50 text-emerald-700';
+      : 'border-neutral-200 bg-neutral-50 text-neutral-800';
   return (
     <div
       role={kind === 'error' ? 'alert' : 'status'}
-      className={`rounded-md border px-3 py-2 text-sm ${style}`}
+      className={`rounded-xl border px-3.5 py-2.5 text-sm ${style}`}
     >
       {children}
     </div>

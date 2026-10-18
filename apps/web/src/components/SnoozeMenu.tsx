@@ -30,21 +30,21 @@ export function SnoozeMenu({ task }: { task: Task }) {
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={snooze.isPending}
-        className="rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        className="rounded-full px-2.5 py-1 text-xs font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
       >
         {snooze.isPending ? 'Snoozing…' : 'Snooze'}
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-10 mt-1 w-40 rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-10 mt-1 w-44 rounded-xl border border-neutral-200 bg-white p-1 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)]"
         >
           {SNOOZE_OPTIONS.map((option) => (
             <button
               key={option}
               role="menuitem"
               type="button"
-              className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+              className="block w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950"
               onClick={() => {
                 setOpen(false);
                 snooze.mutate({ id: task.id, option });

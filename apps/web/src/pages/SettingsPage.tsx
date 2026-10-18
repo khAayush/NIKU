@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { ME_KEY, browserTimezone, deleteAccount, updateMe, useMe } from '../api/auth';
+import { PageHeader } from '../components/PageHeader';
 import { NotificationSettings } from '../components/NotificationSettings';
 import { Alert, Button, Field, SelectField, errorMessage, validate } from '../components/ui';
 
@@ -10,8 +11,8 @@ export function SettingsPage() {
   const { data: me } = useMe();
   if (!me) return null;
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+    <div className="space-y-6">
+      <PageHeader title="Settings" subtitle="Account" />
       <ProfileSection me={me} />
       <Section title="Reminders">
         <NotificationSettings me={me} />
@@ -23,8 +24,8 @@ export function SettingsPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-4 text-base font-semibold text-slate-900">{title}</h2>
+    <section className="rounded-2xl border border-neutral-200 bg-white p-7">
+      <h2 className="mb-5 text-lg font-semibold tracking-tight text-neutral-950">{title}</h2>
       {children}
     </section>
   );
@@ -87,7 +88,7 @@ function ProfileSection({ me }: { me: Me }) {
           {detected !== values.timezone && (
             <button
               type="button"
-              className="mt-1 text-xs text-indigo-600 hover:underline"
+              className="mt-1 text-xs text-neutral-950 hover:underline"
               onClick={() => setValues({ ...values, timezone: detected })}
             >
               Use this device's timezone ({detected})
@@ -129,7 +130,7 @@ function DeleteAccountSection() {
 
   return (
     <Section title="Delete account">
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mb-4 text-sm text-neutral-600">
         Permanently deletes your account, tasks, lists and settings. This can't be undone.
       </p>
       {!open ? (

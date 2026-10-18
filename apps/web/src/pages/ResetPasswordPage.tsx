@@ -44,7 +44,7 @@ export function ResetPasswordPage() {
       <AuthLayout title="Reset your password">
         <Alert>This reset link is incomplete. Please use the link from the email.</Alert>
         <p className="mt-4 text-center text-sm">
-          <Link to="/forgot-password" className="text-indigo-600 hover:underline">
+          <Link to="/forgot-password" className="text-neutral-950 hover:underline">
             Request a new link
           </Link>
         </p>
@@ -60,7 +60,7 @@ export function ResetPasswordPage() {
             Your password has been changed and you've been signed out everywhere.
           </Alert>
           <p className="mt-4 text-center text-sm">
-            <Link to="/login" className="text-indigo-600 hover:underline">
+            <Link to="/login" className="text-neutral-950 hover:underline">
               Log in with your new password
             </Link>
           </p>

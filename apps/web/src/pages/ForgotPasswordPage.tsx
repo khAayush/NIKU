@@ -39,7 +39,7 @@ export function ForgotPasswordPage() {
       ) : (
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           {formError && <Alert>{formError}</Alert>}
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-neutral-600">
             Enter your email and we'll send you a link to choose a new password.
           </p>
           <Field
@@ -57,7 +57,7 @@ export function ForgotPasswordPage() {
         </form>
       )}
       <p className="mt-4 text-center text-sm">
-        <Link to="/login" className="text-indigo-600 hover:underline">
+        <Link to="/login" className="text-neutral-950 hover:underline">
           Back to log in
         </Link>
       </p>

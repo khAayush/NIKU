@@ -1,1 +1,26 @@
 @import 'tailwindcss';
+
+/* NIKU: black & white theme. Neutral (untinted) grays, black accents, Geist type. */
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-white text-neutral-900;
+  }
+
+  ::selection {
+    @apply bg-neutral-900 text-white;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-neutral-900;
+  }
+}

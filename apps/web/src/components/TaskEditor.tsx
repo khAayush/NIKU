@@ -16,7 +16,7 @@ import { useMe } from '../api/auth';
 import { useCreateTask, useDeleteTask, useLists, useUpdateTask } from '../api/tasks';
 import { PRIORITY_LABEL, RECURRENCE_LABEL } from '../lib/format';
 import { Modal } from './Modal';
-import { Alert, Button, Field, SelectField, errorMessage, validate } from './ui';
+import { Alert, Button, Field, SelectField, errorMessage, inputClass, validate } from './ui';
 
 interface FormValues {
   title: string;
@@ -193,7 +193,7 @@ export function TaskForm({
         autoFocus
       />
       <div>
-        <label className="block text-sm font-medium text-slate-700" htmlFor={notesId}>
+        <label className="block text-[13px] font-medium text-neutral-800" htmlFor={notesId}>
           Notes
         </label>
         <textarea
@@ -201,7 +201,7 @@ export function TaskForm({
           rows={3}
           value={values.notes}
           onChange={(e) => set('notes', e.target.value)}
-          className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:outline-none"
+          className={inputClass}
         />
       </div>
 
@@ -273,7 +273,7 @@ export function TaskForm({
         </SelectField>
       </div>
       {values.priority !== 'LOW' && !values.dueDate && !errors.dueAt && (
-        <p className="text-xs text-slate-500">A due date is needed unless priority is Low.</p>
+        <p className="text-xs text-neutral-500">A due date is needed unless priority is Low.</p>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">

@@ -24,17 +24,25 @@ function Toggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 py-3">
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-5 w-5 shrink-0 accent-indigo-600"
-      />
+    <label className="flex cursor-pointer items-center justify-between gap-6 py-4 has-disabled:cursor-not-allowed">
       <span>
-        <span className="block text-sm font-medium text-slate-800">{label}</span>
-        <span className="block text-xs text-slate-500">{description}</span>
+        <span className="block text-sm font-medium text-neutral-950">{label}</span>
+        <span className="mt-0.5 block text-xs text-neutral-500">{description}</span>
+      </span>
+      {/* A real checkbox (keyboard + screen readers), drawn as a switch. */}
+      <span className="relative inline-flex shrink-0">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={checked}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer h-6 w-11 cursor-pointer appearance-none rounded-full bg-neutral-200 transition-colors checked:bg-neutral-950 disabled:cursor-not-allowed disabled:opacity-40"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"
+        />
       </span>
     </label>
   );
@@ -82,7 +90,7 @@ export function NotificationSettings({ me }: { me: Me }) {
     });
 
   return (
-    <div className="max-w-xl divide-y divide-slate-100">
+    <div className="max-w-xl divide-y divide-neutral-100">
       <Toggle
         label="In-app notifications"
         description="Pop up in this app while it's open."

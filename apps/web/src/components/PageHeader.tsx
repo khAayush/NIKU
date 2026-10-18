@@ -13,10 +13,16 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
+        {subtitle && (
+          <p className="mb-1.5 text-xs font-medium tracking-[0.15em] text-neutral-400 uppercase">
+            {subtitle}
+          </p>
+        )}
+        <h1 className="text-3xl font-semibold tracking-tight text-neutral-950 md:text-4xl">
+          {title}
+        </h1>
       </div>
       <div className="flex items-center gap-2">
         {children}
@@ -28,7 +34,7 @@ export function PageHeader({
 
 export function EmptyMessage({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-lg border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
+    <p className="rounded-2xl border border-dashed border-neutral-200 px-4 py-12 text-center text-sm text-neutral-500">
       {children}
     </p>
   );

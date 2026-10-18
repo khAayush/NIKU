@@ -56,9 +56,12 @@ function ReminderToast({ reminder, onClose }: { reminder: ReminderPayload; onClo
   }
 
   return (
-    <div role="alert" className="rounded-xl border border-indigo-200 bg-white p-4 shadow-lg">
+    <div
+      role="alert"
+      className="rounded-2xl bg-neutral-950 p-5 text-white shadow-[0_24px_48px_-12px_rgba(0,0,0,0.45)]"
+    >
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white">
           <svg
             viewBox="0 0 24 24"
             className="h-4 w-4"
@@ -70,23 +73,25 @@ function ReminderToast({ reminder, onClose }: { reminder: ReminderPayload; onClo
           </svg>
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase">Reminder</p>
-          <p className="truncate text-sm font-medium text-slate-900">{reminder.title}</p>
-          {reminder.dueLabel && <p className="text-xs text-slate-500">Due {reminder.dueLabel}</p>}
+          <p className="text-[11px] font-medium tracking-[0.15em] text-neutral-400 uppercase">
+            Reminder
+          </p>
+          <p className="mt-0.5 truncate text-[15px] font-medium text-white">{reminder.title}</p>
+          {reminder.dueLabel && <p className="text-xs text-neutral-400">Due {reminder.dueLabel}</p>}
         </div>
         <button
           onClick={onClose}
           aria-label="Dismiss reminder"
-          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="rounded-full p-1 text-neutral-500 transition-colors hover:bg-white/10 hover:text-white"
         >
           ✕
         </button>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <button
           onClick={() => run(() => setDone.mutateAsync({ id: reminder.taskId, done: true }))}
           disabled={setDone.isPending}
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+          className="rounded-full bg-white px-3.5 py-1.5 text-xs font-medium text-neutral-950 transition hover:bg-neutral-200"
         >
           Done
         </button>
@@ -95,13 +100,13 @@ function ReminderToast({ reminder, onClose }: { reminder: ReminderPayload; onClo
             key={option}
             onClick={() => run(() => snooze.mutateAsync({ id: reminder.taskId, option }))}
             disabled={snooze.isPending}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-full border border-white/15 px-3.5 py-1.5 text-xs font-medium text-neutral-200 transition hover:border-white/30 hover:text-white"
           >
             {SNOOZE_LABEL[option]}
           </button>
         ))}
       </div>
-      {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-rose-400">{error}</p>}
     </div>
   );
 }

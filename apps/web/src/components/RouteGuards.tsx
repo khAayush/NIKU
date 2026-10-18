@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router';
 import { useMe } from '../api/auth';
 
 function FullPageMessage({ text }: { text: string }) {
-  return <div className="flex min-h-dvh items-center justify-center text-slate-500">{text}</div>;
+  return <div className="flex min-h-dvh items-center justify-center text-neutral-500">{text}</div>;
 }
 
 /** Renders child routes only for signed-in users; otherwise sends them to /login. */

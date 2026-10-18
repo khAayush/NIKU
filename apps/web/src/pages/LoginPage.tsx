@@ -59,10 +59,10 @@ export function LoginPage() {
         </Button>
       </form>
       <div className="mt-4 flex justify-between text-sm">
-        <Link to="/forgot-password" className="text-indigo-600 hover:underline">
+        <Link to="/forgot-password" className="text-neutral-950 hover:underline">
           Forgot password?
         </Link>
-        <Link to="/signup" className="text-indigo-600 hover:underline">
+        <Link to="/signup" className="text-neutral-950 hover:underline">
           Create an account
         </Link>
       </div>

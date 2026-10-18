@@ -6,6 +6,7 @@ import { App } from './App';
 import { ME_KEY } from './api/auth';
 import { ApiRequestError } from './api/client';
 import { registerServiceWorker } from './lib/push';
+import '@fontsource-variable/geist';
 import './index.css';
 
 const queryClient: QueryClient = new QueryClient({

@@ -52,17 +52,21 @@ export function CalendarPage() {
     go({ day: d.toFormat(DATE_FORMAT), month: d.toFormat('yyyy-MM') });
 
   return (
-    <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+    <div className="flex flex-col gap-8 xl:flex-row xl:items-start">
       <section className="min-w-0 flex-1">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">{month.toFormat('LLLL yyyy')}</h1>
-          <div className="flex items-center gap-1">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <h1 className="text-3xl font-semibold tracking-tight text-neutral-950 md:text-4xl">
+            {month.toFormat('LLLL')}{' '}
+            <span className="font-normal text-neutral-400">{month.toFormat('yyyy')}</span>
+          </h1>
+          <div className="flex items-center gap-2">
             <Button
               variant="secondary"
               aria-label="Previous month"
+              size="icon"
               onClick={() => go({ month: month.minus({ months: 1 }).toFormat('yyyy-MM') })}
             >
-              ‹
+              <Chevron direction="left" />
             </Button>
             <Button
               variant="secondary"
@@ -73,20 +77,21 @@ export function CalendarPage() {
             <Button
               variant="secondary"
               aria-label="Next month"
+              size="icon"
               onClick={() => go({ month: month.plus({ months: 1 }).toFormat('yyyy-MM') })}
             >
-              ›
+              <Chevron direction="right" />
             </Button>
           </div>
         </div>
 
         {isError && <LoadError />}
 
-        <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
+        <div className="grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100">
           {WEEKDAYS.map((w) => (
             <div
               key={w}
-              className="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500"
+              className="bg-white py-3 text-center text-[11px] font-medium tracking-[0.15em] text-neutral-400 uppercase"
             >
               {w}
             </div>
@@ -106,9 +111,9 @@ export function CalendarPage() {
             );
           })}
         </div>
-        <p className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-500">
+        <p className="mt-4 flex flex-wrap items-center gap-5 text-xs text-neutral-500">
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-indigo-500" /> Has tasks
+            <span className="h-2 w-2 rounded-full bg-neutral-900" /> Has tasks
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-rose-500" /> Has overdue tasks
@@ -153,17 +158,17 @@ function DayCell({
       aria-label={label}
       aria-pressed={isSelected}
       className={[
-        'relative flex min-h-16 flex-col items-start p-1.5 text-left sm:min-h-20 sm:p-2',
-        overdue ? 'bg-rose-50 hover:bg-rose-100' : 'bg-white hover:bg-slate-50',
-        isSelected ? 'z-10 ring-2 ring-indigo-500 ring-inset' : '',
+        'relative flex min-h-16 flex-col items-start p-2 text-left transition-colors sm:min-h-24 sm:p-2.5',
+        overdue ? 'bg-rose-50/70 hover:bg-rose-50' : 'bg-white hover:bg-neutral-50',
+        isSelected ? 'z-10 ring-[1.5px] ring-neutral-950 ring-inset' : '',
       ].join(' ')}
     >
       <span
         className={[
-          'flex h-6 w-6 items-center justify-center rounded-full text-xs sm:text-sm',
-          isToday ? 'bg-indigo-600 font-semibold text-white' : '',
-          !isToday && !inMonth ? 'text-slate-300' : '',
-          !isToday && inMonth ? 'text-slate-700' : '',
+          'flex h-7 w-7 items-center justify-center rounded-full text-xs tabular-nums sm:text-sm',
+          isToday ? 'bg-neutral-950 font-medium text-white' : '',
+          !isToday && !inMonth ? 'text-neutral-300' : '',
+          !isToday && inMonth ? 'text-neutral-800' : '',
         ].join(' ')}
       >
         {date.day}
@@ -171,12 +176,12 @@ function DayCell({
       {info && (
         <span
           className={[
-            'mt-auto flex items-center gap-1 text-xs font-medium',
-            overdue ? 'text-rose-600' : open ? 'text-indigo-600' : 'text-slate-400',
+            'mt-auto flex items-center gap-1.5 text-xs font-medium tabular-nums',
+            overdue ? 'text-rose-600' : open ? 'text-neutral-950' : 'text-neutral-400',
           ].join(' ')}
         >
           <span
-            className={`h-2 w-2 shrink-0 rounded-full ${overdue ? 'bg-rose-500' : open ? 'bg-indigo-500' : 'bg-slate-300'}`}
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue ? 'bg-rose-500' : open ? 'bg-neutral-950' : 'bg-neutral-300'}`}
           />
           <span className="hidden sm:inline">{info.total}</span>
         </span>
@@ -191,11 +196,13 @@ function DayPanel({ date, tz }: { date: string; tz: string }) {
   const d = DateTime.fromFormat(date, DATE_FORMAT, { zone: tz });
 
   return (
-    <aside className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm xl:sticky xl:top-6 xl:w-96 xl:shrink-0">
-      <div className="mb-4 flex items-center justify-between gap-2">
+    <aside className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-6 xl:sticky xl:top-12 xl:w-96 xl:shrink-0">
+      <div className="mb-6 flex items-start justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold">{d.toFormat('cccc')}</h2>
-          <p className="text-sm text-slate-500">{d.toFormat('d LLLL yyyy')}</p>
+          <p className="text-[11px] font-medium tracking-[0.15em] text-neutral-400 uppercase">
+            {d.toFormat('d LLLL yyyy')}
+          </p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight">{d.toFormat('cccc')}</h2>
         </div>
         <Button onClick={openNew}>+ Add</Button>
       </div>
@@ -208,5 +215,22 @@ function DayPanel({ date, tz }: { date: string; tz: string }) {
       )}
       {editor}
     </aside>
+  );
+}
+
+function Chevron({ direction }: { direction: 'left' | 'right' }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={direction === 'left' ? 'M12 4l-6 6 6 6' : 'M8 4l6 6-6 6'} />
+    </svg>
   );
 }
