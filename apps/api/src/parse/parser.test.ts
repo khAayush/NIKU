@@ -167,27 +167,19 @@ describe('lists', () => {
 });
 
 describe('remind me', () => {
-  it('sets a reminder at the due time', () => {
+  it('drops "remind me to" from the title (reminders come from settings)', () => {
     const r = parse('Remind me to call mom tomorrow at 5pm');
     expect(r.title).toBe('Call mom');
-    expect(local(r.remindAt)).toBe('2026-10-18T17:00');
-    expect(r.remindAt).toEqual(r.dueAt);
+    expect(local(r.dueAt)).toBe('2026-10-18T17:00');
+    expect(r.recognized).toEqual(['tomorrow at 5pm']);
   });
 
-  it('reminds at 9:00 for all-day tasks', () => {
-    const r = parse('Remind me to pay rent on the 1st');
-    expect(r.title).toBe('Pay rent');
-    expect(local(r.remindAt)).toBe('2026-11-01T09:00');
+  it('works without a date', () => {
+    expect(parse('Remind me to stretch').title).toBe('Stretch');
   });
 
-  it('has no reminder without a date', () => {
-    const r = parse('Remind me to stretch');
-    expect(r.title).toBe('Stretch');
-    expect(r.remindAt).toBeNull();
-  });
-
-  it('never adds a reminder unless asked', () => {
-    expect(parse('Call mom tomorrow at 5pm').remindAt).toBeNull();
+  it('also handles "please remind me about"', () => {
+    expect(parse('please remind me about the dentist on Monday').title).toBe('The dentist');
   });
 });
 

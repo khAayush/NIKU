@@ -14,7 +14,8 @@ export const taskSchema = z.object({
   /** For all-day tasks: the start of that day in the user's timezone. */
   dueAt: z.iso.datetime().nullable(),
   dueAllDay: z.boolean(),
-  remindAt: z.iso.datetime().nullable(),
+  /** The next reminder that will be sent (from settings or a snooze), if any. */
+  nextReminderAt: z.iso.datetime().nullable(),
   priority: prioritySchema,
   recurrence: recurrenceSchema,
   status: taskStatusSchema,
@@ -32,7 +33,6 @@ const taskFields = {
   notes: z.string().max(TASK_NOTES_MAX).nullable(),
   dueAt: isoDateTime.nullable(),
   dueAllDay: z.boolean(),
-  remindAt: isoDateTime.nullable(),
   priority: prioritySchema,
   recurrence: recurrenceSchema,
   listId: z.uuid().nullable(),
@@ -40,7 +40,6 @@ const taskFields = {
 
 interface TaskRuleInput {
   dueAt: unknown;
-  remindAt: unknown;
   priority: string;
   recurrence: string;
 }
@@ -51,8 +50,8 @@ export function taskRuleIssues(t: TaskRuleInput): { path: string; message: strin
   if (!t.dueAt && t.priority !== 'LOW') {
     issues.push({ path: 'dueAt', message: 'A due date is required unless priority is Low' });
   }
-  if (t.recurrence !== 'NONE' && !t.dueAt && !t.remindAt) {
-    issues.push({ path: 'recurrence', message: 'A repeating task needs a due date or a reminder' });
+  if (t.recurrence !== 'NONE' && !t.dueAt) {
+    issues.push({ path: 'recurrence', message: 'A repeating task needs a due date' });
   }
   return issues;
 }
@@ -63,7 +62,6 @@ export const createTaskSchema = z
     notes: taskFields.notes.default(null),
     dueAt: taskFields.dueAt.default(null),
     dueAllDay: taskFields.dueAllDay.default(false),
-    remindAt: taskFields.remindAt.default(null),
     priority: taskFields.priority.default('MEDIUM'),
     recurrence: taskFields.recurrence.default('NONE'),
     listId: taskFields.listId.default(null),
@@ -153,7 +151,6 @@ export const taskDraftSchema = z.object({
   notes: z.string().nullable(),
   dueAt: z.iso.datetime().nullable(),
   dueAllDay: z.boolean(),
-  remindAt: z.iso.datetime().nullable(),
   priority: prioritySchema,
   recurrence: recurrenceSchema,
   listId: z.string().nullable(),

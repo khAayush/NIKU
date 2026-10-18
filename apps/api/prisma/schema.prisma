@@ -42,39 +42,51 @@ model List {
 }
 
 model Task {
-  id                    String     @id @default(uuid())
-  userId                String
-  user                  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listId                String?
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listId        String?
   /// Deleting a list moves its tasks to "no list".
-  list                  List?      @relation(fields: [listId], references: [id], onDelete: SetNull)
-  title                 String     @db.VarChar(200)
-  notes                 String?
+  list          List?          @relation(fields: [listId], references: [id], onDelete: SetNull)
+  title         String         @db.VarChar(200)
+  notes         String?
   /// For all-day tasks: the start of that day in the user's timezone.
-  dueAt                 DateTime?  @db.Timestamptz(3)
+  dueAt         DateTime?      @db.Timestamptz(3)
   /// Due on a date without a specific time.
-  dueAllDay             Boolean    @default(false)
-  /// Next time the reminder fires (moves when snoozed).
-  remindAt              DateTime?  @db.Timestamptz(3)
-  /// pg-boss job that will fire `remindAt`; cancelled whenever the reminder changes.
-  reminderJobId         String?
-  /// When the reminder for the current `remindAt` was sent (catch-up and de-duplication).
-  reminderSentAt        DateTime?  @db.Timestamptz(3)
-  /// Minutes before dueAt the reminder is set; kept across recurrences. Null when there is no due date.
-  reminderOffsetMinutes Int?
-  priority              Priority   @default(MEDIUM)
-  recurrence            Recurrence @default(NONE)
+  dueAllDay     Boolean        @default(false)
+  priority      Priority       @default(MEDIUM)
+  recurrence    Recurrence     @default(NONE)
   /// Original day of month for MONTHLY recurrence, so short months don't cause drift.
-  recurrenceDay         Int?
-  status                TaskStatus @default(OPEN)
-  completedAt           DateTime?  @db.Timestamptz(3)
-  createdAt             DateTime   @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime   @updatedAt @db.Timestamptz(3)
+  recurrenceDay Int?
+  reminders     TaskReminder[]
+  status        TaskStatus     @default(OPEN)
+  completedAt   DateTime?      @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
 
   @@index([userId, status, dueAt])
   @@index([userId, listId])
-  @@index([remindAt])
   @@map("task")
+}
+
+/// One scheduled reminder for a task: from the user's settings (`hoursBefore`) or a snooze
+/// (`hoursBefore` null). Kept in sync with the task's due date and the user's settings.
+model TaskReminder {
+  id          String    @id @default(uuid())
+  taskId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  /// Hours before the due time (from settings); null for a one-off snooze.
+  hoursBefore Int?
+  remindAt    DateTime  @db.Timestamptz(3)
+  /// pg-boss job that fires at `remindAt`.
+  jobId       String?
+  /// Set once delivered (de-duplication and startup catch-up).
+  sentAt      DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([taskId, hoursBefore])
+  @@index([remindAt])
+  @@map("task_reminder")
 }
 
 model PushSubscription {
@@ -107,6 +119,8 @@ model User {
   notifyInApp       Boolean            @default(true)
   notifyPush        Boolean            @default(false)
   notifyEmail       Boolean            @default(true)
+  /// Reminders for every task with a due date, in hours before the due time.
+  reminderHours     Int[]              @default([1])
   lists             List[]
   tasks             Task[]
   pushSubscriptions PushSubscription[]

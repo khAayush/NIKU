@@ -35,12 +35,12 @@ Inside `apps/api/src`, code is organised by feature module (`auth/`, `tasks/`, `
 
 - Due date required unless priority is Low. Deleting a list sets its tasks' list to null.
 - Recurrence is computed in the user's timezone from the **due date** (or the reminder time when there is no due date), never from the completion date. Only one next occurrence, always in the future.
-- Reminder is kept as an offset (`reminderOffsetMinutes`) from the due date; monthly recurrence keeps the original day (`recurrenceDay`) and clamps to month end without drifting.
-- Snooze changes only `remindAt`, never `dueAt` or the offset.
+- Monthly recurrence keeps the original day (`recurrenceDay`) and clamps to month end without drifting. A repeating task needs a due date.
+- Reminders are **not** set per task: they come from the user's `reminderHours` (1/2/3/6/12/24/48 h before the due time; all-day tasks count back from 06:00). Snooze adds a one-off `TaskReminder` (`hoursBefore` null), never changes `dueAt`.
 
 ### Reminders
 
-- Scheduled server-side with pg-boss; a task's job is updated/cancelled whenever its `remindAt` changes or it is deleted/completed.
+- One `TaskReminder` row + pg-boss job per reminder. `syncTaskReminders(taskId)` reconciles them after any change to a task's due date/status; `syncUserReminders(userId)` after `reminderHours`/timezone changes. Past times are skipped, not sent late.
 - Delivery fans out to the user's enabled channels: Socket.IO, Web Push, email. Failures are retried by pg-boss and logged.
 - On startup, catch up on reminders that came due while the server was down.
 
@@ -76,14 +76,14 @@ Run from the repo root (local Postgres must be up: `pnpm db:up`).
 - Better Auth `/update-user` is disabled; profile changes go through `PATCH /api/me`.
 - Email: `src/lib/mailer.ts`. Without SMTP config, mail goes to an in-memory `outbox` (tests read it) and is logged in development.
 - Tasks: `src/tasks/service.ts` (CRUD, Today/Overdue queries, complete/reopen), `src/tasks/recurrence.ts` (pure `nextOccurrence`, luxon, fully unit-tested). Every query filters by `userId`; other users' resources are 404.
-- `reminderOffsetMinutes` is recomputed only when the user edits `dueAt`/`dueAllDay`/`remindAt` (snoozes must not change it). `recurrenceDay` is set by the server for MONTHLY.
 - All-day tasks: `dueAllDay=true`, `dueAt` = start of that local day (normalized server-side).
 - Shared time helpers (`packages/shared/src/time.ts`, luxon) convert local date/time ⇄ UTC in the user's timezone; the web editor uses them with `me.timezone` (not the browser's zone).
 - Calendar: `GET /api/tasks/calendar` (per-day counts by local date) + `GET /api/tasks/day`. Weeks start on Monday. URL state `/calendar?month=yyyy-MM&day=yyyy-MM-dd`.
-- Snooze (`src/tasks/snooze.ts`) only sets `remindAt`. Phase 6 must also reschedule the pg-boss job there.
+- Snooze (`src/tasks/snooze.ts` computes the time; `snoozeReminder` in `src/reminders/schedule.ts` stores it as a one-off reminder).
 - Quick add: `src/parse/parser.ts` is a pure function (`parseTaskText(text, { now, timezone, lists })`) using chrono-node (custom parser for "the 15th") + keyword rules; every rule change needs a case in `parser.test.ts`. chrono gets the user's current UTC offset as its reference, and the local date/time fields it returns are rebuilt in the IANA zone with luxon (DST-safe). `POST /api/tasks/parse` never saves.
+- Web task form (`TaskForm`): title + due date/time; priority, list, repeat, notes under "More options" (opens automatically when they hold values). Reminder hours are picked in Settings (`NotificationSettings`).
 - Web quick add: `components/QuickAdd.tsx` (bar + confirmation card reusing `TaskForm`), `hooks/useSpeechRecognition.ts` (Web Speech API; mic hidden with a note when unsupported).
-- Reminders (`src/reminders/`): `schedule.ts` (`scheduleReminder` after any change to `remindAt`/status — cancels the old pg-boss job via `Task.reminderJobId`; `reminderChanged` resets `reminderSentAt`), `deliver.ts` (`handleReminder` claims a reminder once via `reminderSentAt`, emits in-app, enqueues `reminder-push`/`reminder-email` jobs; stale jobs are ignored by comparing `remindAt`), `workers.ts` (workers + startup catch-up), `socket.ts` (Socket.IO, session-cookie auth, room `user:<id>`), `queue.ts` (pg-boss singleton, queues, retries; long retention for far-future reminders). `buildApp` stops pg-boss on close; `server.ts` attaches Socket.IO, starts workers and runs catch-up.
+- Reminders (`src/reminders/`): `schedule.ts` (`syncTaskReminders`/`syncUserReminders`/`snoozeReminder`; jobs carry `{ reminderId, remindAt }`), `deliver.ts` (`handleReminder` claims a reminder once via `TaskReminder.sentAt`, emits in-app, enqueues `reminder-push`/`reminder-email` jobs; stale jobs are ignored by comparing `remindAt`), `workers.ts` (workers + startup catch-up), `socket.ts` (Socket.IO, session-cookie auth, room `user:<id>`), `queue.ts` (pg-boss singleton, queues, retries; long retention for far-future reminders). `buildApp` stops pg-boss on close; `server.ts` attaches Socket.IO, starts workers and runs catch-up.
 - Web: `ReminderToasts` (socket client, Done/Snooze), `public/sw.js` (push only, no caching), `lib/push.ts`, `NotificationSettings`.
 - Design (black & white): neutral grays only (never `slate`, which is blue-tinted) and `neutral-950` as the accent; red (`rose`) only for overdue/errors/destructive actions. Font: Geist (self-hosted `@fontsource-variable/geist`, so CSP stays `'self'`). Shared pieces in `components/ui.tsx`: `Button` (pill; `variant`, `size="icon"` for icon-only), `Field`/`SelectField`/`inputClass`. Cards `rounded-2xl` with hairline `border-neutral-200`; section labels `text-[11px] tracking-[0.15em] uppercase text-neutral-400`.
 - Empty states: `apps/web/src/components/EmptyState.tsx` (original inline SVGs; "free day" variation picked by a date seed).

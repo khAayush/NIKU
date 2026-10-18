@@ -87,16 +87,12 @@ describe('creating tasks', () => {
     expect(t.dueAllDay).toBe(true);
   });
 
-  it('stores the reminder as an offset from the due date', async () => {
+  it("schedules the user's reminders for a new task", async () => {
     const u = await signUp(app);
     const due = new Date(Date.now() + 48 * HOUR);
-    const t = await createTask(u, {
-      title: 'Call',
-      dueAt: iso(due),
-      remindAt: iso(new Date(due.getTime() - HOUR)),
-    });
-    const row = await prisma.task.findUniqueOrThrow({ where: { id: t.id } });
-    expect(row.reminderOffsetMinutes).toBe(60);
+    const t = await createTask(u, { title: 'Call', dueAt: iso(due) });
+    // New users get one reminder, 1 hour before.
+    expect(t.nextReminderAt).toBe(iso(new Date(due.getTime() - HOUR)));
   });
 
   it('stores the original day of the month for monthly tasks', async () => {
@@ -138,22 +134,22 @@ describe('editing and deleting', () => {
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('keeps the reminder offset when only other fields change', async () => {
+  it('moves the reminders when the due date changes', async () => {
     const u = await signUp(app);
     const due = new Date(Date.now() + 48 * HOUR);
-    const t = await createTask(u, {
-      title: 'A',
-      dueAt: iso(due),
-      remindAt: iso(new Date(due.getTime() - 2 * HOUR)),
-    });
-    // Simulate a snooze having moved the reminder.
-    await prisma.task.update({
-      where: { id: t.id },
-      data: { remindAt: new Date(due.getTime() - HOUR) },
-    });
-    await api(u).update(t.id, { title: 'B' });
-    const row = await prisma.task.findUniqueOrThrow({ where: { id: t.id } });
-    expect(row.reminderOffsetMinutes).toBe(120);
+    const t = await createTask(u, { title: 'A', dueAt: iso(due) });
+    const later = new Date(due.getTime() + 24 * HOUR);
+    const res = await api(u).update(t.id, { dueAt: iso(later) });
+    expect(res.json().nextReminderAt).toBe(iso(new Date(later.getTime() - HOUR)));
+    expect(await prisma.taskReminder.count({ where: { taskId: t.id } })).toBe(1);
+  });
+
+  it('removes the reminders when the due date is removed', async () => {
+    const u = await signUp(app);
+    const t = await createTask(u, { title: 'A', dueAt: iso(new Date(Date.now() + 48 * HOUR)) });
+    const res = await api(u).update(t.id, { dueAt: null, priority: 'LOW' });
+    expect(res.json().nextReminderAt).toBeNull();
+    expect(await prisma.taskReminder.count({ where: { taskId: t.id } })).toBe(0);
   });
 
   it('can move a task to "no list"', async () => {
@@ -208,7 +204,6 @@ describe('completing tasks', () => {
       title: 'Water plants',
       notes: 'Both rooms',
       dueAt: due.toISO(),
-      remindAt: due.minus({ minutes: 30 }).toISO(),
       priority: 'HIGH',
       recurrence: 'DAILY',
       listId: list.id,
@@ -224,7 +219,8 @@ describe('completing tasks', () => {
       listId: list.id,
       status: 'OPEN',
       dueAt: iso(due.plus({ days: 1 }).toJSDate()),
-      remindAt: iso(due.plus({ days: 1 }).minus({ minutes: 30 }).toJSDate()),
+      // Reminders come from the user's settings (1 hour before by default).
+      nextReminderAt: iso(due.plus({ days: 1 }).minus({ hours: 1 }).toJSDate()),
     });
   });
 

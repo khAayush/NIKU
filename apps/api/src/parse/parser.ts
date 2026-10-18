@@ -13,7 +13,6 @@ export interface ParsedTask {
   title: string;
   dueAt: Date | null;
   dueAllDay: boolean;
-  remindAt: Date | null;
   priority: Priority;
   recurrence: Recurrence;
   listId: string | null;
@@ -133,14 +132,9 @@ export function parseTaskText(input: string, ctx: ParseContext): ParsedTask {
   const found = (span: Span) => recognized.push({ ...span, order: span.index });
   let text = input.replace(/\s+/g, ' ').trim();
 
-  // "Remind me to …": a reminder at the due time.
-  let remindMe = false;
+  // "Remind me to …" is just phrasing: reminders come from the user's settings.
   const remind = REMIND_ME.exec(text);
-  if (remind) {
-    remindMe = true;
-    found({ text: remind[0].trim(), index: remind.index });
-    text = blank(text, { text: remind[0], index: remind.index });
-  }
+  if (remind) text = blank(text, { text: remind[0], index: remind.index });
 
   // Priority keywords.
   let priority: Priority = 'MEDIUM';
@@ -250,20 +244,11 @@ export function parseTaskText(input: string, ctx: ParseContext): ParsedTask {
     dueAllDay = true;
   }
 
-  // "Remind me …": remind at the due time (9:00 for all-day tasks).
-  let remindAt: Date | null = null;
-  if (remindMe && dueAt) {
-    remindAt = dueAllDay
-      ? DateTime.fromJSDate(dueAt, { zone: tz }).set({ hour: 9 }).toJSDate()
-      : dueAt;
-  }
-
   const title = cleanTitle(text) || cleanTitle(input);
   return {
     title: title.slice(0, TASK_TITLE_MAX),
     dueAt,
     dueAllDay,
-    remindAt,
     priority,
     recurrence,
     listId,

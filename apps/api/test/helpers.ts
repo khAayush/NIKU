@@ -12,7 +12,7 @@ export const ORIGIN = 'http://localhost:5173';
 /** Empties every table and in-memory state so each test starts clean. */
 export async function resetState() {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "task", "list", "push_subscription", "session", "account", "verification", "user" CASCADE',
+    'TRUNCATE "task_reminder", "task", "list", "push_subscription", "session", "account", "verification", "user" CASCADE',
   );
   await (await getBoss()).deleteAllJobs();
   authLimiter.reset();

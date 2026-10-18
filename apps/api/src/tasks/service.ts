@@ -21,7 +21,7 @@ import type { Prisma, Task as TaskRow } from '../generated/prisma/client.js';
 import { AppError, notFound } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 import { assertOwnList } from '../lists/service.js';
-import { cancelReminder, scheduleReminder } from '../reminders/schedule.js';
+import { cancelTaskReminders, snoozeReminder, syncTaskReminders } from '../reminders/schedule.js';
 import { localDayOfMonth, nextOccurrence } from './recurrence.js';
 import { snoozeUntil } from './snooze.js';
 
@@ -34,7 +34,19 @@ const ORDER: Prisma.TaskOrderByWithRelationInput[] = [
   { createdAt: 'asc' },
 ];
 
-export function toTask(row: TaskRow, tz: string, now = new Date()): Task {
+/** Loads the next pending reminder with each task, for `nextReminderAt`. */
+const WITH_NEXT_REMINDER = {
+  reminders: {
+    where: { sentAt: null },
+    orderBy: { remindAt: 'asc' },
+    take: 1,
+    select: { remindAt: true },
+  },
+} satisfies Prisma.TaskInclude;
+
+type TaskWithReminder = TaskRow & { reminders: { remindAt: Date }[] };
+
+export function toTask(row: TaskWithReminder, tz: string, now = new Date()): Task {
   const iso = (d: Date | null) => (d ? d.toISOString() : null);
   return {
     id: row.id,
@@ -42,7 +54,7 @@ export function toTask(row: TaskRow, tz: string, now = new Date()): Task {
     notes: row.notes,
     dueAt: iso(row.dueAt),
     dueAllDay: row.dueAllDay,
-    remindAt: iso(row.remindAt),
+    nextReminderAt: iso(row.reminders[0]?.remindAt ?? null),
     priority: row.priority,
     recurrence: row.recurrence,
     status: row.status,
@@ -67,16 +79,20 @@ function overdueWhere(userId: string, now: Date, tz: string): Prisma.TaskWhereIn
 }
 
 async function findOwnTask(userId: string, id: string) {
-  const row = await prisma.task.findFirst({ where: { id, userId } });
+  const row = await prisma.task.findFirst({ where: { id, userId }, include: WITH_NEXT_REMINDER });
   if (!row) throw notFound('Task not found');
   return row;
+}
+
+/** Re-reads a task (after its reminders changed) in API shape. */
+async function reload(id: string, tz: string) {
+  const row = await prisma.task.findUniqueOrThrow({ where: { id }, include: WITH_NEXT_REMINDER });
+  return toTask(row, tz);
 }
 
 interface DateFields {
   dueAt: Date | null;
   dueAllDay: boolean;
-  remindAt: Date | null;
-  recurrence: Recurrence;
 }
 
 /** All-day due dates are stored as the start of that day in the user's timezone. */
@@ -85,28 +101,15 @@ function normalizeDue(f: DateFields, tz: string) {
   return { dueAt: f.dueAllDay ? startOfLocalDay(f.dueAt, tz) : f.dueAt, dueAllDay: f.dueAllDay };
 }
 
-/** Reminder kept as minutes before the due date, so repeats keep the same lead time. */
-function reminderOffset(dueAt: Date | null, remindAt: Date | null) {
-  return dueAt && remindAt ? Math.round((dueAt.getTime() - remindAt.getTime()) / 60_000) : null;
-}
-
-function recurrenceDay(
-  f: { dueAt: Date | null; remindAt: Date | null; recurrence: Recurrence },
-  tz: string,
-) {
-  const anchor = f.dueAt ?? f.remindAt;
-  return f.recurrence === 'MONTHLY' && anchor ? localDayOfMonth(anchor, tz) : null;
+function recurrenceDay(f: { dueAt: Date | null; recurrence: Recurrence }, tz: string) {
+  return f.recurrence === 'MONTHLY' && f.dueAt ? localDayOfMonth(f.dueAt, tz) : null;
 }
 
 const toDate = (s: string | null) => (s ? new Date(s) : null);
 
 export async function createTask(user: AuthUser, input: z.output<typeof createTaskSchema>) {
   await assertOwnList(user.id, input.listId);
-  const due = normalizeDue(
-    { ...input, dueAt: toDate(input.dueAt), remindAt: toDate(input.remindAt) },
-    user.timezone,
-  );
-  const remindAt = toDate(input.remindAt);
+  const due = normalizeDue({ ...input, dueAt: toDate(input.dueAt) }, user.timezone);
   const row = await prisma.task.create({
     data: {
       userId: user.id,
@@ -114,18 +117,16 @@ export async function createTask(user: AuthUser, input: z.output<typeof createTa
       title: input.title,
       notes: input.notes,
       ...due,
-      remindAt,
-      reminderOffsetMinutes: reminderOffset(due.dueAt, remindAt),
       priority: input.priority,
       recurrence: input.recurrence,
       recurrenceDay: recurrenceDay(
-        { dueAt: due.dueAt, remindAt, recurrence: input.recurrence },
+        { dueAt: due.dueAt, recurrence: input.recurrence },
         user.timezone,
       ),
     },
   });
-  await scheduleReminder(row);
-  return toTask(row, user.timezone);
+  await syncTaskReminders(row.id);
+  return reload(row.id, user.timezone);
 }
 
 export async function updateTask(user: AuthUser, id: string, input: UpdateTaskInput) {
@@ -137,7 +138,6 @@ export async function updateTask(user: AuthUser, id: string, input: UpdateTaskIn
     notes: input.notes !== undefined ? input.notes : existing.notes,
     dueAt: input.dueAt !== undefined ? toDate(input.dueAt) : existing.dueAt,
     dueAllDay: input.dueAllDay ?? existing.dueAllDay,
-    remindAt: input.remindAt !== undefined ? toDate(input.remindAt) : existing.remindAt,
     priority: input.priority ?? existing.priority,
     recurrence: input.recurrence ?? existing.recurrence,
     listId: input.listId !== undefined ? input.listId : existing.listId,
@@ -146,32 +146,24 @@ export async function updateTask(user: AuthUser, id: string, input: UpdateTaskIn
   if (issues.length) throw new AppError(400, 'VALIDATION_ERROR', issues[0]!.message, issues);
 
   const due = normalizeDue(merged, user.timezone);
-  const datesChanged =
-    input.dueAt !== undefined || input.dueAllDay !== undefined || input.remindAt !== undefined;
-  const row = await prisma.task.update({
+  const datesChanged = input.dueAt !== undefined || input.dueAllDay !== undefined;
+  await prisma.task.update({
     where: { id },
     data: {
       ...merged,
       ...due,
-      // Recompute only when the user changed the dates, so a snoozed reminder keeps its offset.
-      ...(datesChanged
-        ? { reminderOffsetMinutes: reminderOffset(due.dueAt, merged.remindAt) }
-        : {}),
       ...(datesChanged || input.recurrence !== undefined
         ? { recurrenceDay: recurrenceDay({ ...merged, dueAt: due.dueAt }, user.timezone) }
         : {}),
     },
   });
-  if (input.remindAt !== undefined) {
-    const reminderChanged = existing.remindAt?.getTime() !== merged.remindAt?.getTime();
-    await scheduleReminder(row, { reminderChanged });
-  }
-  return toTask(row, user.timezone);
+  if (datesChanged) await syncTaskReminders(id);
+  return reload(id, user.timezone);
 }
 
 export async function deleteTask(userId: string, id: string) {
-  const task = await findOwnTask(userId, id);
-  await cancelReminder(task);
+  await findOwnTask(userId, id);
+  await cancelTaskReminders(id);
   await prisma.task.deleteMany({ where: { id, userId } });
 }
 
@@ -186,7 +178,10 @@ export async function getTask(user: AuthUser, id: string) {
 export async function completeTask(user: AuthUser, id: string): Promise<CompleteTaskResponse> {
   const now = new Date();
   const result = await prisma.$transaction(async (tx) => {
-    const existing = await tx.task.findFirst({ where: { id, userId: user.id } });
+    const existing = await tx.task.findFirst({
+      where: { id, userId: user.id },
+      include: WITH_NEXT_REMINDER,
+    });
     if (!existing) throw notFound('Task not found');
     // Already completed: nothing to do, and never spawn a second next occurrence.
     if (existing.status === 'COMPLETED') return { task: existing, next: null, changed: false };
@@ -194,20 +189,19 @@ export async function completeTask(user: AuthUser, id: string): Promise<Complete
     const task = await tx.task.update({
       where: { id },
       data: { status: 'COMPLETED', completedAt: now },
+      include: WITH_NEXT_REMINDER,
     });
 
-    const occurrence = nextOccurrence(existing, user.timezone, now);
-    const next = occurrence
+    const nextDue = nextOccurrence(existing, user.timezone, now);
+    const next = nextDue
       ? await tx.task.create({
           data: {
             userId: user.id,
             listId: existing.listId,
             title: existing.title,
             notes: existing.notes,
-            dueAt: occurrence.dueAt,
+            dueAt: nextDue,
             dueAllDay: existing.dueAllDay,
-            remindAt: occurrence.remindAt,
-            reminderOffsetMinutes: existing.reminderOffsetMinutes,
             priority: existing.priority,
             recurrence: existing.recurrence,
             recurrenceDay: existing.recurrenceDay,
@@ -218,24 +212,20 @@ export async function completeTask(user: AuthUser, id: string): Promise<Complete
     return { task, next, changed: true };
   });
 
-  if (result.changed) {
-    await scheduleReminder(result.task); // completed: cancels its reminder
-    if (result.next) await scheduleReminder(result.next);
-  }
+  if (!result.changed) return { task: toTask(result.task, user.timezone, now), next: null };
+  await syncTaskReminders(result.task.id); // completed: cancels its reminders
+  if (result.next) await syncTaskReminders(result.next.id);
   return {
-    task: toTask(result.task, user.timezone, now),
-    next: result.next ? toTask(result.next, user.timezone, now) : null,
+    task: await reload(result.task.id, user.timezone),
+    next: result.next ? await reload(result.next.id, user.timezone) : null,
   };
 }
 
 export async function reopenTask(user: AuthUser, id: string) {
   await findOwnTask(user.id, id);
-  const row = await prisma.task.update({
-    where: { id },
-    data: { status: 'OPEN', completedAt: null },
-  });
-  await scheduleReminder(row);
-  return toTask(row, user.timezone);
+  await prisma.task.update({ where: { id }, data: { status: 'OPEN', completedAt: null } });
+  await syncTaskReminders(id);
+  return reload(id, user.timezone);
 }
 
 export async function listTasks(user: AuthUser, query: z.output<typeof listTasksQuerySchema>) {
@@ -244,7 +234,12 @@ export async function listTasks(user: AuthUser, query: z.output<typeof listTasks
   if (query.status !== 'all') where.status = query.status === 'open' ? 'OPEN' : 'COMPLETED';
   if (query.q) where.title = { contains: query.q, mode: 'insensitive' };
 
-  const rows = await prisma.task.findMany({ where, orderBy: ORDER, take: MAX_RESULTS });
+  const rows = await prisma.task.findMany({
+    where,
+    orderBy: ORDER,
+    take: MAX_RESULTS,
+    include: WITH_NEXT_REMINDER,
+  });
   const now = new Date();
   return rows.map((r) => toTask(r, user.timezone, now));
 }
@@ -255,6 +250,7 @@ export async function overdueTasks(user: AuthUser) {
     where: overdueWhere(user.id, now, user.timezone),
     orderBy: ORDER,
     take: MAX_RESULTS,
+    include: WITH_NEXT_REMINDER,
   });
   return rows.map((r) => toTask(r, user.timezone, now));
 }
@@ -268,11 +264,13 @@ export async function todayTasks(user: AuthUser): Promise<TodayResponse> {
       where: overdueWhere(user.id, now, user.timezone),
       orderBy: ORDER,
       take: MAX_RESULTS,
+      include: WITH_NEXT_REMINDER,
     }),
     prisma.task.findMany({
       where: { userId: user.id, dueAt: { gte: start, lt: end } },
       orderBy: ORDER,
       take: MAX_RESULTS,
+      include: WITH_NEXT_REMINDER,
     }),
   ]);
   const overdue = overdueRows.map((r) => toTask(r, user.timezone, now));
@@ -315,24 +313,21 @@ export async function dayTasks(user: AuthUser, date: string) {
     where: { userId: user.id, dueAt: { gte: start, lt: end } },
     orderBy: ORDER,
     take: MAX_RESULTS,
+    include: WITH_NEXT_REMINDER,
   });
   const now = new Date();
   return rows.map((r) => toTask(r, user.timezone, now));
 }
 
 /**
- * Moves only the reminder time (never the due date or the stored reminder offset).
- * Works whether or not the task already had a reminder.
+ * Adds a one-off reminder at the snooze time (replacing any earlier pending snooze).
+ * Never changes the due date or the reminders from settings.
  */
 export async function snoozeTask(user: AuthUser, id: string, option: SnoozeOption) {
   const existing = await findOwnTask(user.id, id);
   if (existing.status === 'COMPLETED') {
     throw new AppError(409, 'TASK_COMPLETED', 'Completed tasks cannot be snoozed');
   }
-  const row = await prisma.task.update({
-    where: { id },
-    data: { remindAt: snoozeUntil(option, new Date(), user.timezone) },
-  });
-  await scheduleReminder(row, { reminderChanged: true });
-  return toTask(row, user.timezone);
+  await snoozeReminder(id, snoozeUntil(option, new Date(), user.timezone));
+  return reload(id, user.timezone);
 }

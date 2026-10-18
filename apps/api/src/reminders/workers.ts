@@ -41,15 +41,18 @@ export async function startReminderWorkers() {
  * queues them to go out now. Safe to run alongside the original jobs: delivery is claimed once.
  */
 export async function catchUpMissedReminders(now = new Date()): Promise<number> {
-  const missed = await prisma.task.findMany({
-    where: { status: 'OPEN', remindAt: { lte: now }, reminderSentAt: null },
+  const missed = await prisma.taskReminder.findMany({
+    where: { sentAt: null, remindAt: { lte: now }, task: { status: 'OPEN' } },
     select: { id: true, remindAt: true },
   });
   if (!missed.length) return 0;
 
   const boss = await getBoss();
-  for (const task of missed) {
-    const data: ReminderJobData = { taskId: task.id, remindAt: task.remindAt!.toISOString() };
+  for (const reminder of missed) {
+    const data: ReminderJobData = {
+      reminderId: reminder.id,
+      remindAt: reminder.remindAt.toISOString(),
+    };
     await boss.send(QUEUES.reminder, data);
   }
   logger.info({ count: missed.length }, 'Queued missed reminders');

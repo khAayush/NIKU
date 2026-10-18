@@ -20,7 +20,6 @@ export async function parseRoutes(app: FastifyInstance) {
         notes: null,
         dueAt: parsed.dueAt?.toISOString() ?? null,
         dueAllDay: parsed.dueAllDay,
-        remindAt: parsed.remindAt?.toISOString() ?? null,
         priority: parsed.priority,
         recurrence: parsed.recurrence,
         listId: parsed.listId,

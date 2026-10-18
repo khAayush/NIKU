@@ -1,4 +1,4 @@
-import type { Me, UpdateMeInput } from '@todo/shared';
+import { REMINDER_HOURS, type Me, type UpdateMeInput } from '@todo/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { ME_KEY, updateMe } from '../api/auth';
@@ -89,37 +89,85 @@ export function NotificationSettings({ me }: { me: Me }) {
       }
     });
 
+  const toggleHour = (hour: number) =>
+    run(() =>
+      save({
+        reminderHours: me.reminderHours.includes(hour)
+          ? me.reminderHours.filter((h) => h !== hour)
+          : [...me.reminderHours, hour],
+      }),
+    );
+
   return (
-    <div className="max-w-xl divide-y divide-neutral-100">
-      <Toggle
-        label="In-app notifications"
-        description="Pop up in this app while it's open."
-        checked={me.notifyInApp}
-        disabled={busy}
-        onChange={(v) => run(() => save({ notifyInApp: v }))}
-      />
-      <Toggle
-        label="Browser push notifications"
-        description={
-          !pushSupported
-            ? "This browser doesn't support push notifications."
-            : blocked
-              ? 'Notifications are blocked for this site. Allow them in the browser settings first.'
-              : me.notifyPush && !thisBrowserSubscribed
-                ? 'On for your other browsers. Turn off and on again to add this browser.'
-                : 'Show reminders even when the app tab is closed (the browser must be running).'
-        }
-        checked={me.notifyPush && (thisBrowserSubscribed || !pushSupported)}
-        disabled={busy || !pushSupported || blocked}
-        onChange={setPush}
-      />
-      <Toggle
-        label="Email"
-        description={`Send reminders to ${me.email}.`}
-        checked={me.notifyEmail}
-        disabled={busy}
-        onChange={(v) => run(() => save({ notifyEmail: v }))}
-      />
+    <div className="max-w-xl">
+      <fieldset className="pb-6">
+        <legend className="text-sm font-medium text-neutral-950">Remind me before each task</legend>
+        <p className="mt-0.5 text-xs text-neutral-500">
+          Applies to every task with a due date. Pick as many as you like. All-day tasks count back
+          from 6:00 that day.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {REMINDER_HOURS.map((hour) => {
+            const on = me.reminderHours.includes(hour);
+            return (
+              <button
+                key={hour}
+                type="button"
+                aria-pressed={on}
+                disabled={busy}
+                onClick={() => toggleHour(hour)}
+                className={`rounded-full border px-4 py-2 text-sm transition-colors disabled:opacity-60 ${
+                  on
+                    ? 'border-neutral-950 bg-neutral-950 text-white'
+                    : 'border-neutral-200 text-neutral-700 hover:border-neutral-400 hover:text-neutral-950'
+                }`}
+              >
+                {hour} {hour === 1 ? 'hour' : 'hours'}
+              </button>
+            );
+          })}
+        </div>
+        {!me.reminderHours.length && (
+          <p className="mt-3 text-xs text-neutral-500">
+            No reminders selected: you won't be reminded about tasks.
+          </p>
+        )}
+      </fieldset>
+
+      <p className="border-t border-neutral-100 pt-5 text-sm font-medium text-neutral-950">
+        How to remind me
+      </p>
+      <div className="divide-y divide-neutral-100">
+        <Toggle
+          label="In-app notifications"
+          description="Pop up in this app while it's open."
+          checked={me.notifyInApp}
+          disabled={busy}
+          onChange={(v) => run(() => save({ notifyInApp: v }))}
+        />
+        <Toggle
+          label="Browser push notifications"
+          description={
+            !pushSupported
+              ? "This browser doesn't support push notifications."
+              : blocked
+                ? 'Notifications are blocked for this site. Allow them in the browser settings first.'
+                : me.notifyPush && !thisBrowserSubscribed
+                  ? 'On for your other browsers. Turn off and on again to add this browser.'
+                  : 'Show reminders even when the app tab is closed (the browser must be running).'
+          }
+          checked={me.notifyPush && (thisBrowserSubscribed || !pushSupported)}
+          disabled={busy || !pushSupported || blocked}
+          onChange={setPush}
+        />
+        <Toggle
+          label="Email"
+          description={`Send reminders to ${me.email}.`}
+          checked={me.notifyEmail}
+          disabled={busy}
+          onChange={(v) => run(() => save({ notifyEmail: v }))}
+        />
+      </div>
       {error && <p className="pt-3 text-sm text-rose-600">{error}</p>}
     </div>
   );

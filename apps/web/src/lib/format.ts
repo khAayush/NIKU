@@ -46,3 +46,11 @@ export const PRIORITY_LABEL: Record<Task['priority'], string> = {
   MEDIUM: 'Medium',
   HIGH: 'High',
 };
+
+/** "1 hour before", "24 and 1 hours before", "48, 24 and 1 hours before". */
+export function formatReminderHours(hours: number[]): string {
+  const sorted = [...hours].sort((a, b) => b - a);
+  if (sorted.length === 1) return `${sorted[0]} hour${sorted[0] === 1 ? '' : 's'} before`;
+  const head = sorted.slice(0, -1).join(', ');
+  return `${head} and ${sorted.at(-1)} hours before`;
+}

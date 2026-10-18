@@ -42,24 +42,32 @@ function dueLabel(dueAt: Date | null, allDay: boolean, tz: string) {
   return allDay ? d.toFormat('ccc d LLL') : d.toFormat('ccc d LLL, HH:mm');
 }
 
-/** Loads the task if this reminder is still current (open, same reminder time). */
-async function currentTask(data: ReminderJobData) {
-  const task = await prisma.task.findUnique({
-    where: { id: data.taskId },
-    include: { user: true },
+/** Loads the reminder and its task if it is still current (task open, same reminder time). */
+async function currentReminder(data: ReminderJobData) {
+  if (!data.reminderId) return null; // job from an older version of the app
+  const reminder = await prisma.taskReminder.findUnique({
+    where: { id: data.reminderId },
+    include: { task: { include: { user: true } } },
   });
-  if (!task || task.status !== 'OPEN' || task.remindAt?.toISOString() !== data.remindAt)
+  if (
+    !reminder ||
+    reminder.task.status !== 'OPEN' ||
+    reminder.remindAt.toISOString() !== data.remindAt
+  ) {
     return null;
-  return task;
+  }
+  return reminder;
 }
 
-function payloadFor(task: NonNullable<Awaited<ReturnType<typeof currentTask>>>): ReminderPayload {
+type CurrentReminder = NonNullable<Awaited<ReturnType<typeof currentReminder>>>;
+
+function payloadFor({ task, remindAt }: CurrentReminder): ReminderPayload {
   return {
     taskId: task.id,
     title: task.title,
     dueAt: task.dueAt?.toISOString() ?? null,
     dueAllDay: task.dueAllDay,
-    remindAt: task.remindAt!.toISOString(),
+    remindAt: remindAt.toISOString(),
     dueLabel: dueLabel(task.dueAt, task.dueAllDay, task.user.timezone),
     url: `${env.WEB_ORIGIN}/today`,
   };
@@ -71,22 +79,16 @@ function payloadFor(task: NonNullable<Awaited<ReturnType<typeof currentTask>>>):
  * deliveries, each with their own retries. Returns whether it was sent.
  */
 export async function handleReminder(data: ReminderJobData): Promise<'sent' | 'skipped'> {
-  const claimed = await prisma.task.updateMany({
-    where: {
-      id: data.taskId,
-      status: 'OPEN',
-      remindAt: new Date(data.remindAt),
-      reminderSentAt: null,
-    },
-    data: { reminderSentAt: new Date() },
+  const reminder = await currentReminder(data);
+  if (!reminder) return 'skipped';
+  const claimed = await prisma.taskReminder.updateMany({
+    where: { id: reminder.id, remindAt: reminder.remindAt, sentAt: null },
+    data: { sentAt: new Date() },
   });
   if (claimed.count === 0) return 'skipped';
+  const { user } = reminder.task;
 
-  const task = await currentTask(data);
-  if (!task) return 'skipped';
-  const { user } = task;
-
-  if (user.notifyInApp) emitRealtime(user.id, payloadFor(task));
+  if (user.notifyInApp) emitRealtime(user.id, payloadFor(reminder));
 
   const boss = await getBoss();
   if (user.notifyPush && pushEnabled) {
@@ -105,13 +107,14 @@ export async function handleReminder(data: ReminderJobData): Promise<'sent' | 's
 
 /** Sends one Web Push message. Throws on failure so pg-boss retries. */
 export async function deliverPush(data: PushJobData): Promise<void> {
-  const task = await currentTask(data);
+  const reminder = await currentReminder(data);
   const sub = await prisma.pushSubscription.findUnique({ where: { id: data.subscriptionId } });
-  if (!task || !sub || !task.user.notifyPush || !pushEnabled) return;
+  if (!reminder || !sub || !reminder.task.user.notifyPush || !pushEnabled) return;
+  const { task } = reminder;
 
   // `inApp` lets the service worker skip the system notification when an open, focused tab
   // already shows the in-app one.
-  const payload = { ...payloadFor(task), inApp: task.user.notifyInApp };
+  const payload = { ...payloadFor(reminder), inApp: task.user.notifyInApp };
   try {
     await webpush.sendNotification(
       { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -131,10 +134,11 @@ export async function deliverPush(data: PushJobData): Promise<void> {
 
 /** Sends the reminder email. Throws on failure so pg-boss retries. */
 export async function deliverEmail(data: ReminderJobData): Promise<void> {
-  const task = await currentTask(data);
-  if (!task || !task.user.notifyEmail) return;
+  const reminder = await currentReminder(data);
+  if (!reminder || !reminder.task.user.notifyEmail) return;
+  const { task } = reminder;
 
-  const p = payloadFor(task);
+  const p = payloadFor(reminder);
   await sendMail({
     to: task.user.email,
     subject: `Reminder: ${task.title}`,

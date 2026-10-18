@@ -11,7 +11,6 @@ describe('createTaskSchema', () => {
       priority: 'MEDIUM',
       recurrence: 'NONE',
       dueAllDay: false,
-      remindAt: null,
       listId: null,
       notes: null,
     });
@@ -29,9 +28,9 @@ describe('createTaskSchema', () => {
     expect(createTaskSchema.safeParse({ title: 'A', priority: 'LOW' }).success).toBe(true);
   });
 
-  it('requires a due date or reminder for repeating tasks', () => {
+  it('requires a due date for repeating tasks', () => {
     const base = { title: 'A', priority: 'LOW', recurrence: 'DAILY' } as const;
     expect(createTaskSchema.safeParse(base).success).toBe(false);
-    expect(createTaskSchema.safeParse({ ...base, remindAt: due }).success).toBe(true);
+    expect(createTaskSchema.safeParse({ ...base, dueAt: due }).success).toBe(true);
   });
 });

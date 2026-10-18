@@ -145,14 +145,20 @@ The signed-in user's profile and settings.
   "notifyInApp": true,
   "notifyPush": false,
   "notifyEmail": true,
+  "reminderHours": [24, 1],
   "createdAt": "2026-10-17T16:05:58.248Z"
 }
 ```
 
 ### `PATCH /api/me`
 
-Updates any of `name`, `timezone`, and the reminder channels `notifyInApp`, `notifyPush`,
-`notifyEmail` (booleans). Other fields are ignored.
+Updates any of `name`, `timezone`, the reminder channels `notifyInApp`, `notifyPush`,
+`notifyEmail` (booleans), and `reminderHours`. Other fields are ignored.
+
+`reminderHours`: when to remind about **every** task with a due date, in hours before the due
+time. Any subset of `1, 2, 3, 6, 12, 24, 48` (`[]` = no reminders); duplicates are removed and it
+is returned largest first. New users start with `[1]`. Changing it (or `timezone`) immediately
+reschedules the reminders of all open tasks.
 
 ```json
 { "name": "Ana B.", "timezone": "Asia/Tokyo" }
@@ -193,7 +199,7 @@ A task object:
   "notes": null,
   "dueAt": "2026-10-20T16:00:00.000Z",
   "dueAllDay": false,
-  "remindAt": "2026-10-20T15:00:00.000Z",
+  "nextReminderAt": "2026-10-20T15:00:00.000Z",
   "priority": "HIGH",
   "recurrence": "NONE",
   "status": "OPEN",
@@ -211,7 +217,7 @@ A task object:
 - `isOverdue` is computed by the server: open, and past `dueAt` (all-day: the day has ended in the
   user's timezone).
 - Rules: `title` 1–200 chars; a `dueAt` is required unless `priority` is `LOW`; a repeating task
-  needs a `dueAt` or a `remindAt`; `listId` must be one of your lists (else 400 `INVALID_LIST`).
+  needs a `dueAt`; `listId` must be one of your lists (else 400 `INVALID_LIST`).
 
 ### `GET /api/tasks`
 
@@ -253,7 +259,6 @@ confirmation, then `POST /api/tasks` with it (edited as needed).
     "notes": null,
     "dueAt": "2026-10-18T16:00:00.000Z",
     "dueAllDay": false,
-    "remindAt": null,
     "priority": "HIGH",
     "recurrence": "NONE",
     "listId": null
@@ -273,7 +278,6 @@ What it understands (dates are read on the user's local calendar, in their timez
 | Low priority                | "low priority", "not urgent", "no rush", "whenever"                                                                | `LOW`                                                                                 |
 | Recurrence                  | "every day"/"daily", "every week"/"weekly", "every month"/"monthly", "every Monday", "on Mondays", "every morning" | `DAILY` / `WEEKLY` / `MONTHLY` (first due date = next matching day; today if no date) |
 | Lists (the user's own)      | "#work", "in my Work list", "for groceries", "Groceries list"                                                      | `listId`                                                                              |
-| Reminder                    | "remind me to …"                                                                                                   | `remindAt` = due time (9:00 for all-day)                                              |
 
 Recognized phrases are removed from the title. Numeric dates like "3/11" use US order
 (month/day). **400** `VALIDATION_ERROR` for empty or too-long text.
@@ -290,7 +294,6 @@ Recognized phrases are removed from the title. Numeric dates like "3/11" use US 
   "notes": "optional",
   "dueAt": "2026-10-20T16:00:00Z",
   "dueAllDay": false,
-  "remindAt": "2026-10-20T15:00:00Z",
   "priority": "HIGH",
   "recurrence": "NONE",
   "listId": null
@@ -303,7 +306,7 @@ Only `title` is required (plus `dueAt` unless `priority` is `LOW`). Defaults: `p
 
 ### `PATCH /api/tasks/:id`
 
-Any subset of the `POST` fields; send `null` to clear `notes`, `dueAt`, `remindAt` or `listId`.
+Any subset of the `POST` fields; send `null` to clear `notes`, `dueAt` or `listId`.
 The rules are checked against the task as it would be after the change. **200** Task.
 **400**, **404**.
 
@@ -315,11 +318,10 @@ The rules are checked against the task as it would be after the change. **200** 
 
 Marks the task completed. For a repeating task, also creates its next occurrence:
 
-- counted from the due date (or the reminder time when there's no due date), never from the
-  completion time, on the user's local calendar (wall-clock time is kept across DST changes);
+- counted from the due date, never from the completion time, on the user's local calendar (wall-clock time is kept across DST changes);
 - monthly tasks keep their original day of the month, using the last day of shorter months;
 - if occurrences were missed, only the next one that isn't already past due is created;
-- the reminder keeps the same offset from the due date.
+- the new occurrence gets reminders from the user's `reminderHours`.
 
 **200** `{ "task": Task, "next": Task | null }`. Completing an already-completed task changes
 nothing and returns `next: null`.
@@ -331,8 +333,9 @@ nothing and returns `next: null`.
 ```
 
 `option`: `10m` (10 minutes from now), `1h` (1 hour from now), `tomorrow` (9:00 tomorrow in the
-user's timezone). Sets `remindAt` to that time — even if the task had no reminder — and changes
-nothing else (not the due date, not the stored reminder offset used for repeats).
+user's timezone). Adds a one-off reminder at that time (replacing any earlier snooze that hasn't
+fired yet), even for tasks without a due date. Changes nothing else: not the due date, not the
+reminders from settings.
 **200** Task. **400** `VALIDATION_ERROR`, **404**, **409** `TASK_COMPLETED`.
 
 ### `POST /api/tasks/:id/reopen`
@@ -344,9 +347,12 @@ is kept.)
 
 ## Reminders
 
-Reminders are scheduled on the server (pg-boss) whenever a task's `remindAt` is set, changed,
-snoozed or the task is reopened; they are cancelled when the reminder is removed, the task is
-completed or deleted. When a reminder fires it is delivered once through every channel the user
+Reminders come from the user's settings (`reminderHours`, see `PATCH /api/me`): every open
+task with a due date gets one reminder per chosen hour, at that many hours before the due time
+(all-day tasks: before **6:00** on their day). Reminder times already in the past when a task is
+created or changed are skipped. They are scheduled on the server (pg-boss) and kept in sync when
+the due date, the task's status or the settings change; snoozes add one-off reminders.
+A task's next pending reminder is shown as `nextReminderAt`. When a reminder fires it is delivered once through every channel the user
 enabled (`notifyInApp`, `notifyPush`, `notifyEmail`). Push and email deliveries are retried with
 exponential backoff (up to 5 retries) and failures are logged. Reminders that came due while the
 server was down are sent when it starts.

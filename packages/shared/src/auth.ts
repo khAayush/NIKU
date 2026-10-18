@@ -61,9 +61,28 @@ export const meSchema = z.object({
   notifyInApp: z.boolean(),
   notifyPush: z.boolean(),
   notifyEmail: z.boolean(),
+  /** Hours before each task's due time, largest first. */
+  reminderHours: z.array(z.number().int()),
   createdAt: z.iso.datetime(),
 });
 export type Me = z.infer<typeof meSchema>;
+
+/** Reminder choices: hours before a task's due time (all-day tasks: before 6:00 that day). */
+export const REMINDER_HOURS = [1, 2, 3, 6, 12, 24, 48] as const;
+export type ReminderHours = (typeof REMINDER_HOURS)[number];
+
+/** Any subset of `REMINDER_HOURS` (empty = no reminders). */
+export const reminderHoursSchema = z
+  .array(
+    z
+      .number()
+      .int()
+      .refine((h) => (REMINDER_HOURS as readonly number[]).includes(h), {
+        message: `Choose from ${REMINDER_HOURS.join(', ')} hours`,
+      }),
+  )
+  .max(REMINDER_HOURS.length)
+  .transform((hours) => [...new Set(hours)].sort((a, b) => b - a));
 
 export const updateMeSchema = z
   .object({
@@ -73,6 +92,8 @@ export const updateMeSchema = z
     notifyInApp: z.boolean(),
     notifyPush: z.boolean(),
     notifyEmail: z.boolean(),
+    /** Hours before each task's due time to send reminders. */
+    reminderHours: reminderHoursSchema,
   })
   .partial();
 export type UpdateMeInput = z.infer<typeof updateMeSchema>;

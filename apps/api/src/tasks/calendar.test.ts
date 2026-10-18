@@ -110,26 +110,34 @@ describe('GET /api/tasks/day', () => {
 });
 
 describe('POST /api/tasks/:id/snooze', () => {
-  it('moves only the reminder time', async () => {
+  it('adds a one-off reminder and leaves the due date and settings reminders alone', async () => {
     const u = await signUp(app, { timezone: TZ });
     const due = new Date(Date.now() + 5 * 3_600_000);
-    const t = await createTask(u, {
-      title: 'Call',
-      dueAt: due.toISOString(),
-      remindAt: new Date(due.getTime() - 3_600_000).toISOString(),
-    });
+    const t = await createTask(u, { title: 'Call', dueAt: due.toISOString() });
 
     const before = Date.now();
     const res = await post(u, `/api/tasks/${t.id}/snooze`, { option: '10m' });
     expect(res.statusCode).toBe(200);
     const snoozed: Task = res.json();
-    const remind = new Date(snoozed.remindAt!).getTime();
+    const remind = new Date(snoozed.nextReminderAt!).getTime();
     expect(remind).toBeGreaterThanOrEqual(before + 10 * 60_000 - 1000);
     expect(remind).toBeLessThanOrEqual(Date.now() + 10 * 60_000 + 1000);
     expect(snoozed.dueAt).toBe(t.dueAt);
 
-    const row = await prisma.task.findUniqueOrThrow({ where: { id: t.id } });
-    expect(row.reminderOffsetMinutes).toBe(60);
+    const reminders = await prisma.taskReminder.findMany({
+      where: { taskId: t.id },
+      orderBy: { remindAt: 'asc' },
+    });
+    expect(reminders.map((r) => r.hoursBefore)).toEqual([null, 1]);
+    expect(reminders[1]!.remindAt.getTime()).toBe(due.getTime() - 3_600_000);
+  });
+
+  it('replaces an earlier pending snooze', async () => {
+    const u = await signUp(app);
+    const t = await createTask(u, { title: 'X', priority: 'LOW' });
+    await post(u, `/api/tasks/${t.id}/snooze`, { option: '10m' });
+    await post(u, `/api/tasks/${t.id}/snooze`, { option: '1h' });
+    expect(await prisma.taskReminder.count({ where: { taskId: t.id } })).toBe(1);
   });
 
   it('tomorrow means 9:00 tomorrow in the user timezone', async () => {
@@ -138,7 +146,7 @@ describe('POST /api/tasks/:id/snooze', () => {
     const snoozed: Task = (
       await post(u, `/api/tasks/${t.id}/snooze`, { option: 'tomorrow' })
     ).json();
-    const local = DateTime.fromISO(snoozed.remindAt!, { zone: TZ });
+    const local = DateTime.fromISO(snoozed.nextReminderAt!, { zone: TZ });
     expect(local.toFormat('HH:mm')).toBe('09:00');
     expect(local.toFormat('yyyy-MM-dd')).toBe(
       DateTime.now().setZone(TZ).plus({ days: 1 }).toFormat('yyyy-MM-dd'),

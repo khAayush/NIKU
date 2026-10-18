@@ -15,8 +15,6 @@ function task(overrides: Partial<RecurringTask>): RecurringTask {
     recurrence: 'DAILY',
     dueAt: null,
     dueAllDay: false,
-    remindAt: null,
-    reminderOffsetMinutes: null,
     recurrenceDay: null,
     ...overrides,
   };
@@ -28,14 +26,14 @@ function chain(t: RecurringTask, now: Date, count: number, tz = TZ): string[] {
   let current = t;
   for (let i = 0; i < count; i++) {
     const next = nextOccurrence(current, tz, now)!;
-    out.push(show(next.dueAt ?? next.remindAt, tz)!);
-    current = { ...current, dueAt: next.dueAt, remindAt: next.remindAt };
+    out.push(show(next, tz)!);
+    current = { ...current, dueAt: next };
   }
   return out;
 }
 
 describe('nextOccurrence', () => {
-  it('returns null for non-repeating tasks or tasks without a date', () => {
+  it('returns null for non-repeating tasks or tasks without a due date', () => {
     expect(
       nextOccurrence(
         task({ recurrence: 'NONE', dueAt: local('2026-01-01T09:00') }),
@@ -53,7 +51,7 @@ describe('nextOccurrence', () => {
         TZ,
         local('2026-06-10T07:00'),
       );
-      expect(show(next?.dueAt)).toBe('2026-06-11T08:30');
+      expect(show(next)).toBe('2026-06-11T08:30');
     });
 
     it('keeps the wall-clock time across a daylight-saving change', () => {
@@ -63,8 +61,8 @@ describe('nextOccurrence', () => {
         TZ,
         local('2026-03-28T08:00'),
       );
-      expect(show(next?.dueAt)).toBe('2026-03-29T09:00');
-      expect(next!.dueAt!.getTime() - local('2026-03-28T09:00').getTime()).toBe(23 * 3_600_000);
+      expect(show(next)).toBe('2026-03-29T09:00');
+      expect(next!.getTime() - local('2026-03-28T09:00').getTime()).toBe(23 * 3_600_000);
     });
 
     it('weekly: same weekday and time next week', () => {
@@ -73,7 +71,7 @@ describe('nextOccurrence', () => {
         TZ,
         local('2026-10-18T10:00'),
       );
-      expect(show(next?.dueAt)).toBe('2026-10-25T18:00'); // the next Sunday, after the DST change
+      expect(show(next)).toBe('2026-10-25T18:00'); // the next Sunday, after the DST change
     });
 
     it('works in other timezones too', () => {
@@ -83,7 +81,7 @@ describe('nextOccurrence', () => {
         tz,
         local('2026-10-28T07:00', tz),
       );
-      expect(show(next?.dueAt, tz)).toBe('2026-11-04T07:15');
+      expect(show(next, tz)).toBe('2026-11-04T07:15');
     });
   });
 
@@ -93,22 +91,20 @@ describe('nextOccurrence', () => {
 
     it('same day next month', () => {
       const next = nextOccurrence(monthly('2026-05-15T10:00'), TZ, local('2026-05-15T09:00'));
-      expect(show(next?.dueAt)).toBe('2026-06-15T10:00');
+      expect(show(next)).toBe('2026-06-15T10:00');
     });
 
     it('clamps the 31st to the last day of shorter months', () => {
       const t = monthly('2026-01-31T09:00', 31);
-      expect(show(nextOccurrence(t, TZ, local('2026-01-31T08:00'))?.dueAt)).toBe(
-        '2026-02-28T09:00',
-      );
+      expect(show(nextOccurrence(t, TZ, local('2026-01-31T08:00')))).toBe('2026-02-28T09:00');
       expect(
-        show(nextOccurrence(monthly('2026-03-31T09:00', 31), TZ, local('2026-03-31T08:00'))?.dueAt),
+        show(nextOccurrence(monthly('2026-03-31T09:00', 31), TZ, local('2026-03-31T08:00'))),
       ).toBe('2026-04-30T09:00');
     });
 
     it('uses Feb 29 in leap years', () => {
       const next = nextOccurrence(monthly('2028-01-31T09:00', 31), TZ, local('2028-01-31T08:00'));
-      expect(show(next?.dueAt)).toBe('2028-02-29T09:00');
+      expect(show(next)).toBe('2028-02-29T09:00');
     });
 
     it('returns to the original day after a short month (no drift)', () => {
@@ -135,72 +131,7 @@ describe('nextOccurrence', () => {
 
     it('falls back to the due date day when recurrenceDay is missing', () => {
       const next = nextOccurrence(monthly('2026-08-31T09:00'), TZ, local('2026-08-31T08:00'));
-      expect(show(next?.dueAt)).toBe('2026-09-30T09:00');
-    });
-  });
-
-  describe('reminder offsets', () => {
-    it('keeps the same offset before the due time', () => {
-      const next = nextOccurrence(
-        task({
-          dueAt: local('2026-06-10T17:00'),
-          remindAt: local('2026-06-10T16:00'),
-          reminderOffsetMinutes: 60,
-        }),
-        TZ,
-        local('2026-06-10T12:00'),
-      );
-      expect(show(next?.dueAt)).toBe('2026-06-11T17:00');
-      expect(show(next?.remindAt)).toBe('2026-06-11T16:00');
-    });
-
-    it('keeps the offset across a daylight-saving change', () => {
-      const next = nextOccurrence(
-        task({
-          recurrence: 'WEEKLY',
-          dueAt: local('2026-03-25T18:00'),
-          remindAt: local('2026-03-25T17:30'),
-          reminderOffsetMinutes: 30,
-        }),
-        TZ,
-        local('2026-03-25T10:00'),
-      );
-      expect(show(next?.dueAt)).toBe('2026-04-01T18:00');
-      expect(show(next?.remindAt)).toBe('2026-04-01T17:30');
-    });
-
-    it('supports reminders after the start of an all-day task (negative offset)', () => {
-      const next = nextOccurrence(
-        task({
-          dueAt: local('2026-06-10T00:00'),
-          dueAllDay: true,
-          remindAt: local('2026-06-10T09:00'),
-          reminderOffsetMinutes: -540,
-        }),
-        TZ,
-        local('2026-06-10T12:00'),
-      );
-      expect(show(next?.dueAt)).toBe('2026-06-11T00:00');
-      expect(show(next?.remindAt)).toBe('2026-06-11T09:00');
-    });
-
-    it('has no reminder when the task had none', () => {
-      const next = nextOccurrence(
-        task({ dueAt: local('2026-06-10T17:00') }),
-        TZ,
-        local('2026-06-10T12:00'),
-      );
-      expect(next?.remindAt).toBeNull();
-    });
-
-    it('repeats the reminder time itself when there is no due date', () => {
-      const next = nextOccurrence(
-        task({ recurrence: 'WEEKLY', remindAt: local('2026-06-10T08:00') }),
-        TZ,
-        local('2026-06-10T09:00'),
-      );
-      expect(next?.dueAt).toBeNull();
-      expect(show(next?.remindAt)).toBe('2026-06-17T08:00');
+      expect(show(next)).toBe('2026-09-30T09:00');
     });
   });
 
@@ -211,7 +142,7 @@ describe('nextOccurrence', () => {
         TZ,
         local('2026-06-10T15:00'), // completed two days early
       );
-      expect(show(next?.dueAt)).toBe('2026-06-13T09:00');
+      expect(show(next)).toBe('2026-06-13T09:00');
     });
 
     it('counts from the due date when completed late', () => {
@@ -220,7 +151,7 @@ describe('nextOccurrence', () => {
         TZ,
         local('2026-06-03T10:00'), // two days late
       );
-      expect(show(next?.dueAt)).toBe('2026-06-08T09:00'); // still Mondays, not Wednesdays
+      expect(show(next)).toBe('2026-06-08T09:00'); // still Mondays, not Wednesdays
     });
 
     it('skips missed occurrences and creates only the next future one', () => {
@@ -229,7 +160,7 @@ describe('nextOccurrence', () => {
         TZ,
         local('2026-06-10T12:00'), // nine days late
       );
-      expect(show(next?.dueAt)).toBe('2026-06-11T09:00');
+      expect(show(next)).toBe('2026-06-11T09:00');
     });
 
     it('can land later the same day when that time is still ahead', () => {
@@ -238,7 +169,7 @@ describe('nextOccurrence', () => {
         TZ,
         local('2026-06-10T12:00'),
       );
-      expect(show(next?.dueAt)).toBe('2026-06-10T18:00');
+      expect(show(next)).toBe('2026-06-10T18:00');
     });
 
     it('skips missed months, keeping the original day', () => {
@@ -247,7 +178,7 @@ describe('nextOccurrence', () => {
         TZ,
         local('2026-05-15T12:00'),
       );
-      expect(show(next?.dueAt)).toBe('2026-05-31T09:00');
+      expect(show(next)).toBe('2026-05-31T09:00');
     });
 
     it('all-day: today counts as not yet missed', () => {
@@ -256,16 +187,7 @@ describe('nextOccurrence', () => {
         TZ,
         local('2026-06-10T15:00'),
       );
-      expect(show(next?.dueAt)).toBe('2026-06-10T00:00');
-    });
-
-    it('skips missed reminder-only occurrences', () => {
-      const next = nextOccurrence(
-        task({ remindAt: local('2026-06-01T08:00') }),
-        TZ,
-        local('2026-06-10T09:00'),
-      );
-      expect(show(next?.remindAt)).toBe('2026-06-11T08:00');
+      expect(show(next)).toBe('2026-06-10T00:00');
     });
   });
 });

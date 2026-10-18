@@ -12,9 +12,10 @@ import {
   type TaskDraft,
 } from '@todo/shared';
 import { useId, useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { useMe } from '../api/auth';
 import { useCreateTask, useDeleteTask, useLists, useUpdateTask } from '../api/tasks';
-import { PRIORITY_LABEL, RECURRENCE_LABEL } from '../lib/format';
+import { PRIORITY_LABEL, RECURRENCE_LABEL, formatReminderHours } from '../lib/format';
 import { Modal } from './Modal';
 import { Alert, Button, Field, SelectField, errorMessage, inputClass, validate } from './ui';
 
@@ -23,8 +24,6 @@ interface FormValues {
   notes: string;
   dueDate: string;
   dueTime: string;
-  remindDate: string;
-  remindTime: string;
   priority: Priority;
   recurrence: Recurrence;
   listId: string;
@@ -38,7 +37,7 @@ export interface TaskDefaults {
 /** Fields shared by saved tasks and quick-add drafts. */
 type TaskFields = Pick<
   TaskDraft,
-  'title' | 'notes' | 'dueAt' | 'dueAllDay' | 'remindAt' | 'priority' | 'recurrence' | 'listId'
+  'title' | 'notes' | 'dueAt' | 'dueAllDay' | 'priority' | 'recurrence' | 'listId'
 >;
 
 function initialValues(task: TaskFields | null, tz: string, defaults: TaskDefaults): FormValues {
@@ -48,22 +47,17 @@ function initialValues(task: TaskFields | null, tz: string, defaults: TaskDefaul
       notes: '',
       dueDate: defaults.dueDate ?? '',
       dueTime: '',
-      remindDate: '',
-      remindTime: '',
       priority: 'MEDIUM',
       recurrence: 'NONE',
       listId: defaults.listId ?? '',
     };
   }
   const due = task.dueAt ? new Date(task.dueAt) : null;
-  const remind = task.remindAt ? new Date(task.remindAt) : null;
   return {
     title: task.title,
     notes: task.notes ?? '',
     dueDate: due ? toLocalDate(due, tz) : '',
     dueTime: due && !task.dueAllDay ? toLocalTime(due, tz) : '',
-    remindDate: remind ? toLocalDate(remind, tz) : '',
-    remindTime: remind ? toLocalTime(remind, tz) : '',
     priority: task.priority,
     recurrence: task.recurrence,
     listId: task.listId ?? '',
@@ -80,19 +74,12 @@ function toInput(
   if (v.dueDate && !dueAt) errors.dueAt = 'Invalid date';
   if (!v.dueDate && v.dueTime) errors.dueAt = 'Pick a date for this time';
 
-  let remindAt: Date | null = null;
-  if (v.remindDate || v.remindTime) {
-    remindAt = v.remindDate && v.remindTime ? localToUtc(v.remindDate, v.remindTime, tz) : null;
-    if (!remindAt) errors.remindAt = 'Pick both a date and a time';
-  }
-
   return {
     input: {
       title: v.title,
       notes: v.notes.trim() ? v.notes : null,
       dueAt: dueAt?.toISOString() ?? null,
       dueAllDay: Boolean(dueAt && !v.dueTime),
-      remindAt: remindAt?.toISOString() ?? null,
       priority: v.priority,
       recurrence: v.recurrence,
       listId: v.listId || null,
@@ -100,6 +87,10 @@ function toInput(
     errors,
   };
 }
+
+/** True when any of the fields under "More options" differs from its default. */
+const hasExtras = (v: FormValues) =>
+  v.priority !== 'MEDIUM' || v.recurrence !== 'NONE' || v.listId !== '' || v.notes.trim() !== '';
 
 /** Create or edit a task in a modal. Pass `task` to edit. */
 export function TaskEditor({
@@ -138,11 +129,14 @@ export function TaskForm({
   onSaved?: () => void;
   submitLabel?: string;
 }) {
-  const tz = useMe().data!.timezone;
+  const me = useMe().data!;
+  const tz = me.timezone;
   const notesId = useId();
   const onClose = onDone;
   const { data: lists = [] } = useLists();
   const [values, setValues] = useState(() => initialValues(task ?? draft, tz, defaults));
+  // Extras start open only when they already hold something (editing, or quick add found some).
+  const [showMore, setShowMore] = useState(() => hasExtras(values));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -161,6 +155,8 @@ export function TaskForm({
     const all = { ...schemaErrors, ...dateErrors };
     setErrors(all);
     setFormError('');
+    // A missing due date can be fixed by choosing Low priority, which lives under More options.
+    if (schemaErrors.dueAt || schemaErrors.recurrence) setShowMore(true);
     if (!data || Object.keys(all).length) return;
     try {
       if (task) await updateTask.mutateAsync({ id: task.id, input });
@@ -192,19 +188,6 @@ export function TaskForm({
         maxLength={200}
         autoFocus
       />
-      <div>
-        <label className="block text-[13px] font-medium text-neutral-800" htmlFor={notesId}>
-          Notes
-        </label>
-        <textarea
-          id={notesId}
-          rows={3}
-          value={values.notes}
-          onChange={(e) => set('notes', e.target.value)}
-          className={inputClass}
-        />
-      </div>
-
       <div className="grid grid-cols-2 gap-3">
         <Field
           label="Due date"
@@ -214,67 +197,119 @@ export function TaskForm({
           error={errors.dueAt}
         />
         <Field
-          label="Due time"
+          label="Time"
           type="time"
           value={values.dueTime}
           onChange={(e) => set('dueTime', e.target.value)}
           hint={values.dueDate && !values.dueTime ? 'All day' : undefined}
         />
-        <Field
-          label="Reminder date"
-          type="date"
-          value={values.remindDate}
-          onChange={(e) => set('remindDate', e.target.value)}
-          error={errors.remindAt}
-        />
-        <Field
-          label="Reminder time"
-          type="time"
-          value={values.remindTime}
-          onChange={(e) => set('remindTime', e.target.value)}
-        />
       </div>
+      <p className="text-xs text-neutral-500">
+        {values.dueDate
+          ? me.reminderHours.length
+            ? `Reminders ${formatReminderHours(me.reminderHours)}.`
+            : 'Reminders are off.'
+          : 'Add a due date to get reminders.'}{' '}
+        <Link to="/settings" className="text-neutral-950 underline-offset-2 hover:underline">
+          Change in Settings
+        </Link>
+      </p>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <SelectField
-          label="Priority"
-          value={values.priority}
-          onChange={(e) => set('priority', e.target.value as Priority)}
+      <div className="border-t border-neutral-100 pt-4">
+        <button
+          type="button"
+          onClick={() => setShowMore((v) => !v)}
+          aria-expanded={showMore}
+          className="flex w-full items-center justify-between text-sm font-medium text-neutral-950"
         >
-          {PRIORITIES.map((p) => (
-            <option key={p} value={p}>
-              {PRIORITY_LABEL[p]}
-            </option>
-          ))}
-        </SelectField>
-        <SelectField
-          label="List"
-          value={values.listId}
-          onChange={(e) => set('listId', e.target.value)}
-        >
-          <option value="">No list</option>
-          {lists.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </SelectField>
-        <SelectField
-          label="Repeat"
-          value={values.recurrence}
-          onChange={(e) => set('recurrence', e.target.value as Recurrence)}
-          error={errors.recurrence}
-        >
-          {RECURRENCES.map((r) => (
-            <option key={r} value={r}>
-              {RECURRENCE_LABEL[r]}
-            </option>
-          ))}
-        </SelectField>
+          <span>
+            More options
+            {!showMore && hasExtras(values) && (
+              <span className="ml-2 font-normal text-neutral-500">
+                {[
+                  values.priority !== 'MEDIUM' && PRIORITY_LABEL[values.priority],
+                  lists.find((l) => l.id === values.listId)?.name,
+                  values.recurrence !== 'NONE' && RECURRENCE_LABEL[values.recurrence],
+                  values.notes.trim() && 'Notes',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+            )}
+          </span>
+          <svg
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            className={`h-4 w-4 text-neutral-400 transition-transform ${showMore ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 8l5 5 5-5" />
+          </svg>
+        </button>
+
+        {showMore && (
+          <div className="mt-4 space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <SelectField
+                label="Priority"
+                value={values.priority}
+                onChange={(e) => set('priority', e.target.value as Priority)}
+              >
+                {PRIORITIES.map((p) => (
+                  <option key={p} value={p}>
+                    {PRIORITY_LABEL[p]}
+                  </option>
+                ))}
+              </SelectField>
+              <SelectField
+                label="List"
+                value={values.listId}
+                onChange={(e) => set('listId', e.target.value)}
+              >
+                <option value="">No list</option>
+                {lists.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </SelectField>
+              <SelectField
+                label="Repeat"
+                value={values.recurrence}
+                onChange={(e) => set('recurrence', e.target.value as Recurrence)}
+                error={errors.recurrence}
+              >
+                {RECURRENCES.map((r) => (
+                  <option key={r} value={r}>
+                    {RECURRENCE_LABEL[r]}
+                  </option>
+                ))}
+              </SelectField>
+            </div>
+            {values.priority !== 'LOW' && !values.dueDate && (
+              <p className="text-xs text-neutral-500">
+                A due date is needed unless priority is Low.
+              </p>
+            )}
+            <div>
+              <label className="block text-[13px] font-medium text-neutral-800" htmlFor={notesId}>
+                Notes
+              </label>
+              <textarea
+                id={notesId}
+                rows={3}
+                value={values.notes}
+                onChange={(e) => set('notes', e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        )}
       </div>
-      {values.priority !== 'LOW' && !values.dueDate && !errors.dueAt && (
-        <p className="text-xs text-neutral-500">A due date is needed unless priority is Low.</p>
-      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
         <div>

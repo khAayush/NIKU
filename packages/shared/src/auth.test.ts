@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isValidTimezone, signUpSchema } from './auth.js';
+import { isValidTimezone, reminderHoursSchema, signUpSchema } from './auth.js';
 
 describe('isValidTimezone', () => {
   it.each(['UTC', 'Europe/London', 'America/New_York', 'Asia/Kolkata'])('accepts %s', (tz) => {
@@ -23,5 +23,15 @@ describe('signUpSchema', () => {
     expect(signUpSchema.safeParse({ ...valid, password: 'all lowercase words' }).success).toBe(
       true,
     );
+  });
+});
+
+describe('reminderHoursSchema', () => {
+  it('accepts the preset hours, de-duplicated and largest first', () => {
+    expect(reminderHoursSchema.parse([1, 24, 1, 48])).toEqual([48, 24, 1]);
+    expect(reminderHoursSchema.parse([])).toEqual([]);
+  });
+  it.each([[[5]], [[0]], [[72]], [[1.5]]])('rejects %j', (hours) => {
+    expect(reminderHoursSchema.safeParse(hours).success).toBe(false);
   });
 });

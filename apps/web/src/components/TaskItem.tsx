@@ -92,9 +92,9 @@ export function TaskItem({
               {task.isOverdue ? `Overdue · ${due}` : due}
             </span>
           )}
-          {task.remindAt && !done && (
+          {task.nextReminderAt && !done && (
             <span title="Reminder" className="inline-flex items-center gap-1">
-              <BellIcon /> {formatDateTime(task.remindAt, tz)}
+              <BellIcon /> {formatDateTime(task.nextReminderAt, tz)}
             </span>
           )}
           {task.recurrence !== 'NONE' && (
