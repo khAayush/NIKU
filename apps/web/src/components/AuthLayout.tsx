@@ -16,12 +16,12 @@ export function AuthLayout({ title, children }: { title: string; children: React
             Tasks, reminders and a calendar, kept quietly in order.
           </p>
         </div>
-        <p className="text-xs text-neutral-600">© NIKU</p>
+        <p className="text-xs text-neutral-600">© Surgience LLC</p>
         {/* Soft concentric rings as a subtle texture. */}
         <svg
           aria-hidden="true"
           viewBox="0 0 400 400"
-          className="pointer-events-none absolute -right-32 -bottom-32 h-[28rem] w-[28rem] text-white/[0.06]"
+          className="pointer-events-none absolute -right-32 -bottom-32 h-112 w-md text-white/6"
           fill="none"
           stroke="currentColor"
         >
