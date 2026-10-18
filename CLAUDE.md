@@ -70,7 +70,7 @@ Run from the repo root (local Postgres must be up: `pnpm db:up`).
 - Env vars are validated in `apps/api/src/lib/env.ts` (Zod). Local dev loads the repo-root `.env`; existing process env always wins.
 - `packages/shared` is consumed as TypeScript source (no build step); imports inside it use `.js` extensions.
 - New pnpm dependencies with install scripts must be allowed under `allowBuilds` in `pnpm-workspace.yaml`.
-- Due dates: `dueDateProblem` (shared `time.ts`) is the single rule (not past, ≤ 5 years), checked by the API on create/when the due date changes and by `TaskForm` before submitting. Tests that need overdue tasks use `insertTask` from `test/helpers.ts` (the API refuses past dates).
+- Due dates: `dueDateProblem` (shared `time.ts`) is the single rule (not past, ≤ 6 months ahead, `MAX_DUE_MONTHS`), checked by the API on create/when the due date changes and by `TaskForm` before submitting. Tests that need overdue tasks use `insertTask` from `test/helpers.ts` (the API refuses past dates).
 - API tests: `buildApp()` + `app.inject()`, against `todo_test` (migrated in `apps/api/test/global-setup.ts`). Use `test/helpers.ts` (`resetState`, `signUp`, `request` adds the Origin header Better Auth requires).
 - Auth wiring: `src/auth/auth.ts` (Better Auth config), `src/auth/routes.ts` (mounts `/api/auth/*`, validates bodies with shared schemas, rewrites errors to our format), `src/auth/rate-limit.ts` (in-memory per-IP + per-email limits for sign-in/up/reset), `src/auth/authenticate.ts` (`authenticate` preHandler + `currentUser(request)`).
 - Protected routes are registered inside the `protectedApi` scope in `src/app.ts`.

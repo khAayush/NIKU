@@ -91,12 +91,19 @@ describe('dueDateProblem', () => {
     ).toBe('That day has already passed');
   });
 
-  it('rejects dates more than 5 years ahead', () => {
+  it('rejects dates more than 6 months ahead', () => {
+    // now = 10 June 13:00 London, so the limit is 10 December 13:00 London.
     expect(
-      dueDateProblem({ dueAt: new Date('2031-06-01T12:00:00Z'), dueAllDay: false }, now, tz),
+      dueDateProblem({ dueAt: new Date('2026-12-10T12:59:00Z'), dueAllDay: false }, now, tz),
     ).toBeNull();
     expect(
-      dueDateProblem({ dueAt: new Date('2031-07-01T12:00:00Z'), dueAllDay: false }, now, tz),
-    ).toBe('Pick a date within the next 5 years');
+      dueDateProblem({ dueAt: localToUtc('2026-12-10', null, tz)!, dueAllDay: true }, now, tz),
+    ).toBeNull();
+    expect(
+      dueDateProblem({ dueAt: new Date('2026-12-10T13:01:00Z'), dueAllDay: false }, now, tz),
+    ).toBe('Pick a date within the next 6 months');
+    expect(
+      dueDateProblem({ dueAt: localToUtc('2026-12-11', null, tz)!, dueAllDay: true }, now, tz),
+    ).toBe('Pick a date within the next 6 months');
   });
 });

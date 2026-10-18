@@ -77,13 +77,14 @@ describe('creating tasks', () => {
 
   it("stores all-day due dates as the start of that day in the user's timezone", async () => {
     const u = await signUp(app, { timezone: 'Asia/Tokyo' });
-    // Any instant on 2026-12-05 in Tokyo.
+    // Any instant on a day a few weeks ahead in Tokyo (here 14:00 Tokyo time).
+    const day = DateTime.now().setZone('Asia/Tokyo').plus({ days: 20 }).toFormat('yyyy-MM-dd');
     const t = await createTask(u, {
       title: 'Holiday',
-      dueAt: '2026-12-05T05:00:00Z',
+      dueAt: localToUtc(day, '14:00', 'Asia/Tokyo')!.toISOString(),
       dueAllDay: true,
     });
-    expect(t.dueAt).toBe(localToUtc('2026-12-05', null, 'Asia/Tokyo')!.toISOString());
+    expect(t.dueAt).toBe(localToUtc(day, null, 'Asia/Tokyo')!.toISOString());
     expect(t.dueAllDay).toBe(true);
   });
 
@@ -97,7 +98,10 @@ describe('creating tasks', () => {
 
   it('stores the original day of the month for monthly tasks', async () => {
     const u = await signUp(app, { timezone: TZ });
-    const due = localToUtc('2027-01-31', '09:00', TZ)!;
+    // The 31st of the next month that has one (always within the 6-month limit).
+    let month = DateTime.now().setZone(TZ).plus({ months: 1 }).startOf('month');
+    while (month.daysInMonth !== 31) month = month.plus({ months: 1 });
+    const due = localToUtc(month.set({ day: 31 }).toFormat('yyyy-MM-dd'), '09:00', TZ)!;
     const t = await createTask(u, { title: 'Rent', dueAt: iso(due), recurrence: 'MONTHLY' });
     const row = await prisma.task.findUniqueOrThrow({ where: { id: t.id } });
     expect(row.recurrenceDay).toBe(31);
@@ -423,11 +427,19 @@ describe('QA regressions', () => {
     expect(same.statusCode).toBe(200);
   });
 
-  it('rejects due dates more than 5 years ahead', async () => {
-    const u = await signUp(app);
-    const res = await api(u).create({ title: 'Far', dueAt: '9999-12-31T10:00:00Z' });
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error.message).toBe('Pick a date within the next 5 years');
+  it('rejects due dates more than 6 months ahead', async () => {
+    const u = await signUp(app, { timezone: TZ });
+    const inMonths = (m: number, days = 0) =>
+      iso(DateTime.now().setZone(TZ).plus({ months: m, days }).toJSDate());
+    expect((await api(u).create({ title: 'Ok', dueAt: inMonths(6, -1) })).statusCode).toBe(201);
+    for (const dueAt of [inMonths(6, 1), '9999-12-31T10:00:00Z']) {
+      const res = await api(u).create({ title: 'Far', dueAt });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.message).toBe('Pick a date within the next 6 months');
+    }
+    // Also when moving an existing task.
+    const t = await createTask(u, { title: 'Move me', dueAt: inMonths(1) });
+    expect((await api(u).update(t.id, { dueAt: inMonths(7) })).statusCode).toBe(400);
   });
 
   it('creates only one next occurrence when completed several times at once', async () => {

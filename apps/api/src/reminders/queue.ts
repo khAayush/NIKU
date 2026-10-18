@@ -28,9 +28,9 @@ export function getBoss(): Promise<PgBoss> {
       retryBackoff: true,
       retryDelayMax: 3600,
     };
-    // Reminders can be scheduled up to 5 years ahead (MAX_DUE_YEARS); the default retention
+    // Reminders can be scheduled up to 6 months ahead (MAX_DUE_MONTHS); the default retention
     // (14 days) would delete them before they run. updateQueue applies this to existing installs.
-    const reminderQueue = { ...retries, retentionSeconds: 6 * 366 * DAY, expireInSeconds: 60 };
+    const reminderQueue = { ...retries, retentionSeconds: 366 * DAY, expireInSeconds: 60 };
     await boss.createQueue(QUEUES.reminder, reminderQueue);
     await boss.updateQueue(QUEUES.reminder, reminderQueue);
     await boss.createQueue(QUEUES.push, { ...retries, expireInSeconds: 60 });

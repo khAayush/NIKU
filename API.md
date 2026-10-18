@@ -218,7 +218,7 @@ A task object:
   user's timezone).
 - Rules: `title` 1–200 chars; a `dueAt` is required unless `priority` is `LOW`; a repeating task
   needs a `dueAt`; a new or changed `dueAt` must not have passed (timed: 1 minute of grace;
-  all-day: today is fine) and must be within 5 years (400 `VALIDATION_ERROR`, message e.g.
+  all-day: today is fine) and must be within the next 6 months (400 `VALIDATION_ERROR`, message e.g.
   "That time has already passed"). Overdue tasks can still be edited as long as their due date
   isn't changed; `listId` must be one of your lists (else 400 `INVALID_LIST`).
 

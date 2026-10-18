@@ -27,23 +27,27 @@ async function createTask(u: User, payload: object): Promise<Task> {
 
 const at = (date: string, time: string | null) => localToUtc(date, time, TZ)!.toISOString();
 
+/** Local dates relative to a day ~a month ahead, so tests stay within the 6-month due-date limit. */
+const BASE = DateTime.now().setZone(TZ).plus({ days: 30 }).startOf('day');
+const D = (offset: number) => BASE.plus({ days: offset }).toFormat('yyyy-MM-dd');
+
 describe('GET /api/tasks/calendar', () => {
   it("counts tasks per local day in the user's timezone", async () => {
     const u = await signUp(app, { timezone: TZ });
-    await createTask(u, { title: 'A', dueAt: at('2030-03-02', '09:00') });
-    await createTask(u, { title: 'B', dueAt: at('2030-03-02', '23:30') }); // 04:30 UTC next day
-    await createTask(u, { title: 'C', dueAt: at('2030-03-03', null), dueAllDay: true });
-    const done = await createTask(u, { title: 'D', dueAt: at('2030-03-03', '10:00') });
+    await createTask(u, { title: 'A', dueAt: at(D(0), '09:00') });
+    await createTask(u, { title: 'B', dueAt: at(D(0), '23:30') }); // 04:30 UTC next day
+    await createTask(u, { title: 'C', dueAt: at(D(1), null), dueAllDay: true });
+    const done = await createTask(u, { title: 'D', dueAt: at(D(1), '10:00') });
     await post(u, `/api/tasks/${done.id}/complete`);
-    await createTask(u, { title: 'Outside', dueAt: at('2030-04-15', '10:00') });
+    await createTask(u, { title: 'Outside', dueAt: at(D(44), '10:00') });
     await createTask(u, { title: 'Undated', priority: 'LOW' });
 
-    const res = await get(u, '/api/tasks/calendar?from=2030-02-25&to=2030-04-07');
+    const res = await get(u, `/api/tasks/calendar?from=${D(-5)}&to=${D(36)}`);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
       days: {
-        '2030-03-02': { total: 2, completed: 0, overdue: 0 },
-        '2030-03-03': { total: 2, completed: 1, overdue: 0 },
+        [D(0)]: { total: 2, completed: 0, overdue: 0 },
+        [D(1)]: { total: 2, completed: 1, overdue: 0 },
       },
     });
   });
@@ -67,8 +71,8 @@ describe('GET /api/tasks/calendar', () => {
   it('only counts your own tasks', async () => {
     const a = await signUp(app, { timezone: TZ });
     const b = await signUp(app, { timezone: TZ });
-    await createTask(a, { title: 'A', dueAt: at('2030-03-02', '09:00') });
-    const res = await get(b, '/api/tasks/calendar?from=2030-03-01&to=2030-03-31');
+    await createTask(a, { title: 'A', dueAt: at(D(0), '09:00') });
+    const res = await get(b, `/api/tasks/calendar?from=${D(-1)}&to=${D(29)}`);
     expect(res.json()).toEqual({ days: {} });
   });
 
@@ -88,17 +92,17 @@ describe('GET /api/tasks/calendar', () => {
 describe('GET /api/tasks/day', () => {
   it('lists every task due that local day, including completed ones', async () => {
     const u = await signUp(app, { timezone: TZ });
-    const a = await createTask(u, { title: 'Morning', dueAt: at('2030-03-02', '08:00') });
+    const a = await createTask(u, { title: 'Morning', dueAt: at(D(0), '08:00') });
     const b = await createTask(u, {
       title: 'All day',
-      dueAt: at('2030-03-02', null),
+      dueAt: at(D(0), null),
       dueAllDay: true,
     });
-    const c = await createTask(u, { title: 'Late night', dueAt: at('2030-03-02', '23:59') });
+    const c = await createTask(u, { title: 'Late night', dueAt: at(D(0), '23:59') });
     await post(u, `/api/tasks/${c.id}/complete`);
-    await createTask(u, { title: 'Next day', dueAt: at('2030-03-03', '00:00') });
+    await createTask(u, { title: 'Next day', dueAt: at(D(1), '00:00') });
 
-    const res = await get(u, '/api/tasks/day?date=2030-03-02');
+    const res = await get(u, `/api/tasks/day?date=${D(0)}`);
     const ids = (res.json().items as Task[]).map((t) => t.id);
     expect(ids).toEqual([b.id, a.id, c.id]);
   });

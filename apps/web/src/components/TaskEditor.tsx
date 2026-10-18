@@ -1,4 +1,5 @@
 import {
+  MAX_DUE_MONTHS,
   PRIORITIES,
   RECURRENCES,
   createTaskSchema,
@@ -12,6 +13,7 @@ import {
   type Task,
   type TaskDraft,
 } from '@todo/shared';
+import { DateTime } from 'luxon';
 import { useId, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useMe } from '../api/auth';
@@ -152,7 +154,7 @@ export function TaskForm({
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     const { input, errors: dateErrors } = toInput(values, tz);
-    // Same rule as the server: a new or changed due date can't be in the past (or > 5 years).
+    // Same rule as the server: a new or changed due date can't be in the past (or > 6 months ahead).
     const dueChanged =
       !task || input.dueAt !== task.dueAt || Boolean(input.dueAllDay) !== task.dueAllDay;
     if (input.dueAt && dueChanged && !dateErrors.dueAt) {
@@ -205,6 +207,7 @@ export function TaskForm({
           label="Due date"
           type="date"
           min={toLocalDate(new Date(), tz)}
+          max={DateTime.now().setZone(tz).plus({ months: MAX_DUE_MONTHS }).toFormat('yyyy-MM-dd')}
           value={values.dueDate}
           onChange={(e) => set('dueDate', e.target.value)}
           error={errors.dueAt}
