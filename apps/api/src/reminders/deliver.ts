@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import webpush from 'web-push';
+import { renderEmail } from '../lib/email-template.js';
 import { env } from '../lib/env.js';
 import { logger } from '../lib/logger.js';
 import { sendMail } from '../lib/mailer.js';
@@ -142,10 +143,14 @@ export async function deliverEmail(data: ReminderJobData): Promise<void> {
   await sendMail({
     to: task.user.email,
     subject: `Reminder: ${task.title}`,
-    text:
-      `Hi ${task.user.name},\n\nThis is your reminder for:\n\n  ${task.title}\n` +
-      (p.dueLabel ? `  Due: ${p.dueLabel}\n` : '') +
-      `\nOpen your tasks: ${p.url}\n\n` +
-      `You can change which reminders you get in Settings.`,
+    ...renderEmail({
+      preheader: p.dueLabel ? `Due ${p.dueLabel}` : `A reminder for ${task.title}`,
+      eyebrow: 'Reminder',
+      heading: task.title,
+      paragraphs: [`Hi ${task.user.name}, here's your reminder for this task.`],
+      details: p.dueLabel ? [{ label: 'Due', value: p.dueLabel }] : [],
+      button: { label: 'Open NIKU', url: p.url },
+      note: 'You can change when and how you get reminders in Settings.',
+    }),
   });
 }

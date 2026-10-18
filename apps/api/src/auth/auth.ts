@@ -3,6 +3,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
 import { env } from '../lib/env.js';
+import { renderEmail } from '../lib/email-template.js';
 import { logger } from '../lib/logger.js';
 import { sendMail } from '../lib/mailer.js';
 import { prisma } from '../lib/prisma.js';
@@ -31,10 +32,20 @@ export const auth = betterAuth({
       void sendMail({
         to: user.email,
         subject: 'Reset your NIKU password',
-        text:
-          `Hi ${user.name},\n\nUse this link to choose a new password. It expires in 30 minutes ` +
-          `and can only be used once:\n\n${url}\n\n` +
-          `If you didn't ask for this, you can ignore this email.`,
+        ...renderEmail({
+          preheader: 'Use this link within 30 minutes to choose a new password.',
+          eyebrow: 'Account',
+          heading: 'Reset your password',
+          paragraphs: [
+            `Hi ${user.name},`,
+            'We received a request to reset the password for your NIKU account. ' +
+              'Use the button below to choose a new one.',
+          ],
+          button: { label: 'Choose a new password', url },
+          note:
+            'This link expires in 30 minutes and can only be used once. ' +
+            "If you didn't ask for this, you can ignore this email and your password won't change.",
+        }),
       }).catch((err) =>
         logger.error({ err, userId: user.id }, 'Failed to send password reset email'),
       );

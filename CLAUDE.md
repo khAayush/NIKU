@@ -75,7 +75,7 @@ Run from the repo root (local Postgres must be up: `pnpm db:up`).
 - Auth wiring: `src/auth/auth.ts` (Better Auth config), `src/auth/routes.ts` (mounts `/api/auth/*`, validates bodies with shared schemas, rewrites errors to our format), `src/auth/rate-limit.ts` (in-memory per-IP + per-email limits for sign-in/up/reset), `src/auth/authenticate.ts` (`authenticate` preHandler + `currentUser(request)`).
 - Protected routes are registered inside the `protectedApi` scope in `src/app.ts`.
 - Better Auth `/update-user` is disabled; profile changes go through `PATCH /api/me`.
-- Email: `src/lib/mailer.ts`. Without SMTP config, mail goes to an in-memory `outbox` (tests read it) and is logged in development.
+- Email: `src/lib/mailer.ts`; every email is built with `renderEmail` (`src/lib/email-template.ts`: black & white HTML layout + plain-text version, escapes all values, adds the no-reply notice). Without SMTP config, mail goes to an in-memory `outbox` (tests read it) and is logged in development.
 - Tasks: `src/tasks/service.ts` (CRUD, Today/Overdue queries, complete/reopen), `src/tasks/recurrence.ts` (pure `nextOccurrence`, luxon, fully unit-tested). Every query filters by `userId`; other users' resources are 404.
 - All-day tasks: `dueAllDay=true`, `dueAt` = start of that local day (normalized server-side).
 - Shared time helpers (`packages/shared/src/time.ts`, luxon) convert local date/time ⇄ UTC in the user's timezone; the web editor uses them with `me.timezone` (not the browser's zone).

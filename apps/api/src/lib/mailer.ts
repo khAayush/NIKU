@@ -5,7 +5,10 @@ import { logger } from './logger.js';
 export interface Mail {
   to: string;
   subject: string;
+  /** Plain-text version (shown by clients that don't render HTML). */
   text: string;
+  /** Styled version; see `renderEmail` in `email-template.ts`. */
+  html?: string;
 }
 
 /** Emails "sent" when SMTP isn't configured (tests, local dev). Tests read from here. */

@@ -178,6 +178,10 @@ describe('password reset', () => {
 
     const token = await requestReset(user.email);
     expect(token).toBeTruthy();
+    const mail = outbox.find((m) => m.to === user.email)!;
+    expect(mail.subject).toBe('Reset your NIKU password');
+    expect(mail.html).toContain('Choose a new password');
+    expect(mail.html).toContain('Please do not reply to this email');
 
     expect((await reset(token!)).statusCode).toBe(200);
     expect((await me(user.cookie)).statusCode).toBe(401);

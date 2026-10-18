@@ -341,6 +341,10 @@ describe('email delivery', () => {
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({ to: u.email, subject: 'Reminder: Call the dentist' });
     expect(outbox[0]!.text).toContain('Due: Tue 15 Jan, 12:30');
+    // Styled HTML version in NIKU's layout, with the no-reply notice.
+    expect(outbox[0]!.html).toContain('Call the dentist');
+    expect(outbox[0]!.html).toContain('Tue 15 Jan, 12:30');
+    expect(outbox[0]!.html).toContain('Please do not reply to this email');
   });
 
   it('does nothing for a stale reminder or when email is turned off', async () => {
