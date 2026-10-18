@@ -51,7 +51,7 @@ export function ListsPage() {
       )}
       {isPending ? null : !lists?.length ? (
         <EmptyState kind="no-tasks">
-          No lists yet. Lists are optional — tasks can live without one.
+          No lists yet. Lists are optional, and tasks can live without one.
         </EmptyState>
       ) : (
         <ul className="max-w-md divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">

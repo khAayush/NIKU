@@ -126,10 +126,10 @@ function Magnifier() {
 
 /** Friendly "nothing due" variations, rotated by day so the page doesn't change on every render. */
 const FREE_DAY = [
-  { Art: SunHills, text: 'Nothing due — enjoy your day.' },
+  { Art: SunHills, text: 'Nothing due. Enjoy your day.' },
   { Art: CoffeeCup, text: 'All clear. Maybe time for a coffee?' },
   { Art: PaperPlane, text: 'A free day. Go somewhere nice.' },
-  { Art: Plant, text: 'Nothing planned — room to grow.' },
+  { Art: Plant, text: 'Nothing planned. Room to grow.' },
 ];
 
 function pick<T>(items: T[], seed: string): T {
@@ -159,10 +159,10 @@ export function EmptyState({
     kind === 'free'
       ? pick(FREE_DAY, seed)
       : kind === 'caught-up'
-        ? { Art: CheckSparkles, text: "Nothing overdue — you're all caught up." }
+        ? { Art: CheckSparkles, text: "Nothing overdue. You're all caught up." }
         : kind === 'no-results'
           ? { Art: Magnifier, text: 'No matching tasks.' }
-          : { Art: Plant, text: 'No tasks here yet — add one to get started.' };
+          : { Art: Plant, text: 'No tasks here yet. Add one to get started.' };
 
   return (
     <div
