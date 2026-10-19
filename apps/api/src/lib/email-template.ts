@@ -1,5 +1,7 @@
+import { env } from './env.js';
+
 /**
- * NIKU's email layout: black & white, matching the app. Produces an HTML version (table layout
+ * The app's email layout: black & white, matching the app. Produces an HTML version (table layout
  * and inline styles, which is what email clients support) and a plain-text version.
  * Every value is HTML-escaped, so task titles and names can't inject markup.
  */
@@ -18,8 +20,7 @@ export interface EmailContent {
   note?: string;
 }
 
-export const NO_REPLY_NOTICE =
-  'This is a system-generated email from NIKU. Please do not reply to this email, as replies are not monitored.';
+export const NO_REPLY_NOTICE = `This is a system-generated email from ${env.APP_NAME}. Please do not reply to this email, as replies are not monitored.`;
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
@@ -83,7 +84,7 @@ function renderHtml(c: EmailContent): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;">
   <tr><td align="center" style="padding:40px 16px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
-      <tr><td style="padding:0 8px 24px;font-size:14px;font-weight:600;letter-spacing:6px;color:#0a0a0a;">NIKU</td></tr>
+      <tr><td style="padding:0 8px 24px;font-size:14px;font-weight:600;letter-spacing:6px;color:#0a0a0a;">${e(env.APP_NAME)}</td></tr>
       <tr><td style="background:#ffffff;border:1px solid #e5e5e5;border-radius:20px;padding:40px 36px;">
         ${c.eyebrow ? `<p style="margin:0 0 10px;font-size:11px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:#a3a3a3;">${e(c.eyebrow)}</p>` : ''}
         <h1 style="margin:0 0 20px;font-size:26px;line-height:32px;font-weight:600;letter-spacing:-0.4px;color:#0a0a0a;">${e(c.heading)}</h1>
@@ -104,7 +105,7 @@ function renderHtml(c: EmailContent): string {
 }
 
 function renderText(c: EmailContent): string {
-  const lines = ['NIKU', ''];
+  const lines = [env.APP_NAME, ''];
   if (c.eyebrow) lines.push(c.eyebrow.toUpperCase());
   lines.push(c.heading, '', ...c.paragraphs.flatMap((p) => [p, '']));
   if (c.details?.length) {
@@ -116,7 +117,7 @@ function renderText(c: EmailContent): string {
   return lines.join('\n');
 }
 
-/** Renders an email in NIKU's style, as HTML plus a plain-text alternative. */
+/** Renders an email in the app's style, as HTML plus a plain-text alternative. */
 export function renderEmail(content: EmailContent): { html: string; text: string } {
   return { html: renderHtml(content), text: renderText(content) };
 }

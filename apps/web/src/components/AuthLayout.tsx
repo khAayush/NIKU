@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
+import { APP_NAME } from '../lib/app-name';
 
 /** Signed-out pages: black brand panel on wide screens, form on white. */
 export function AuthLayout({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh bg-white">
       <aside className="relative hidden w-[44%] max-w-xl flex-col justify-between overflow-hidden bg-neutral-950 p-12 text-white lg:flex">
-        <div className="text-[15px] font-semibold tracking-[0.35em]">NIKU</div>
+        <div className="text-[15px] font-semibold tracking-[0.35em]">{APP_NAME}</div>
         <div>
           <p className="text-4xl leading-tight font-semibold tracking-tight">
             Everything you need to do.
@@ -34,7 +35,7 @@ export function AuthLayout({ title, children }: { title: string; children: React
       <main className="flex flex-1 items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-10 text-center text-[15px] font-semibold tracking-[0.35em] text-neutral-950 lg:hidden">
-            NIKU
+            {APP_NAME}
           </div>
           <h1 className="mb-8 text-3xl font-semibold tracking-tight text-neutral-950">{title}</h1>
           {children}

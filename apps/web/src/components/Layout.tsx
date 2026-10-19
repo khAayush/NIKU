@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { ME_KEY, signOut, useMe } from '../api/auth';
 import { useLists } from '../api/tasks';
+import { APP_NAME } from '../lib/app-name';
 import { QuickAdd } from './QuickAdd';
 import { ReminderToasts } from './ReminderToasts';
 
@@ -61,7 +62,7 @@ export function Layout() {
             to="/today"
             className="text-[15px] font-semibold tracking-[0.35em] text-neutral-950"
           >
-            NIKU
+            {APP_NAME}
           </Link>
           <button
             onClick={onSignOut}

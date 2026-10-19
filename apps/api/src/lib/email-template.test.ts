@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { NO_REPLY_NOTICE, renderEmail } from './email-template.js';
+import { env } from './env.js';
+
+const name = env.APP_NAME;
 
 const content = {
   preheader: 'Due Sun 18 Oct, 17:00',
@@ -7,19 +10,19 @@ const content = {
   heading: 'Submit report',
   paragraphs: ["Hi Ana, here's your reminder for this task."],
   details: [{ label: 'Due', value: 'Sun 18 Oct, 17:00' }],
-  button: { label: 'Open NIKU', url: 'https://niku.example/today' },
+  button: { label: `Open ${name}`, url: 'https://app.example/today' },
   note: 'You can change when and how you get reminders in Settings.',
 };
 
 describe('renderEmail', () => {
-  it('renders the NIKU layout with every part of the content', () => {
+  it('renders the app layout with every part of the content', () => {
     const { html } = renderEmail(content);
     for (const part of [
-      'NIKU',
+      `>${name}<`, // app name at the top
       'Due Sun 18 Oct, 17:00', // preheader and detail
       'Submit report',
-      'Open NIKU',
-      'href="https://niku.example/today"',
+      `Open ${name}`,
+      'href="https://app.example/today"',
       'You can change when and how you get reminders in Settings.',
     ]) {
       expect(html).toContain(part);
@@ -38,7 +41,7 @@ describe('renderEmail', () => {
     const { text } = renderEmail(content);
     expect(text).toBe(
       [
-        'NIKU',
+        name,
         '',
         'REMINDER',
         'Submit report',
@@ -47,7 +50,7 @@ describe('renderEmail', () => {
         '',
         'Due: Sun 18 Oct, 17:00',
         '',
-        'Open NIKU: https://niku.example/today',
+        `Open ${name}: https://app.example/today`,
         '',
         'You can change when and how you get reminders in Settings.',
         '',

@@ -50,7 +50,7 @@ little CPU, so it could look "idle". Upgrading to Pay As You Go (PAYG) avoids th
 2. Choose **Upgrade to Pay As You Go** and confirm. Approval can take a little while.
 
 > **Important:** PAYG removes the safety limits of a free account. Anything you create that is
-> *not* Always Free will be billed. In this guide, only create what's described, and look for
+> _not_ Always Free will be billed. In this guide, only create what's described, and look for
 > the **"Always Free-eligible"** label when choosing options.
 
 ### 1.3 Set a budget alert (your safety net)
@@ -84,15 +84,15 @@ Keep the private key (`id_ed25519`, no `.pub`) safe and never share it.
 
 ☰ → **Compute** → **Instances** → **Create instance**.
 
-| Setting           | Choose                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------------- |
-| Name              | `niku`                                                                                      |
-| Image             | **Change image** → **Canonical Ubuntu 24.04** (the console picks the ARM build automatically) |
-| Shape             | **Change shape** → **Ampere** → **VM.Standard.A1.Flex**, **1 OCPU, 6 GB memory**            |
-| Networking        | **Create new virtual cloud network** and **public subnet** (defaults are fine)              |
-| Public IPv4       | **Assign a public IPv4 address** — make sure this is on                                     |
-| SSH keys          | **Paste public keys** → paste the line from Part 2                                          |
-| Boot volume       | Leave the default size (it's within the free 200 GB)                                        |
+| Setting     | Choose                                                                                        |
+| ----------- | --------------------------------------------------------------------------------------------- |
+| Name        | `niku`                                                                                        |
+| Image       | **Change image** → **Canonical Ubuntu 24.04** (the console picks the ARM build automatically) |
+| Shape       | **Change shape** → **Ampere** → **VM.Standard.A1.Flex**, **1 OCPU, 6 GB memory**              |
+| Networking  | **Create new virtual cloud network** and **public subnet** (defaults are fine)                |
+| Public IPv4 | **Assign a public IPv4 address** — make sure this is on                                       |
+| SSH keys    | **Paste public keys** → paste the line from Part 2                                            |
+| Boot volume | Leave the default size (it's within the free 200 GB)                                          |
 
 Click **Create**. When it shows **Running**, copy the **Public IP address** — you'll need it.
 
@@ -102,7 +102,7 @@ Click **Create**. When it shows **Running**, copy the **Public IP address** — 
 
 Free ARM servers are popular and often sold out. Try, in this order:
 
-1. A different **Availability domain** (under *Placement* on the same page).
+1. A different **Availability domain** (under _Placement_ on the same page).
 2. Try again later (early morning US time often works) — capacity frees up regularly.
 3. Use the AMD shape instead: **Change shape** → **Specialty and previous generation** →
    **VM.Standard.E2.1.Micro** (1 GB RAM, Always Free). It works for this app, but you **must**
@@ -247,7 +247,7 @@ nc -zv -w 5 smtp.gmail.com 465
 
 At least one should say **succeeded**. Note which one — if your `.env.example` has an SMTP port
 setting, use that port. If **both** fail, Oracle is blocking outbound mail on your account;
-see *Troubleshooting* at the end.
+see _Troubleshooting_ at the end.
 
 ---
 
@@ -321,17 +321,18 @@ chmod 600 .env
 nano .env
 ```
 
-| Variable                                | Value                                        |
-| --------------------------------------- | -------------------------------------------- |
-| `DOMAIN`                                | `niku.duckdns.org` (no `https://`)           |
-| `ACME_EMAIL`                            | your email, for Let's Encrypt expiry notices |
-| `POSTGRES_PASSWORD`                     | output of `openssl rand -hex 24`             |
-| `BETTER_AUTH_SECRET`                    | output of `openssl rand -base64 48`          |
-| `SMTP_USER`                             | your Gmail address                           |
-| `SMTP_PASS`                             | the Gmail app password from 7.2              |
-| `MAIL_FROM`                             | e.g. `NIKU <you@gmail.com>` (optional)       |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | from 7.3                                     |
-| `VAPID_SUBJECT`                         | `mailto:` + your email                       |
+| Variable                                | Value                                         |
+| --------------------------------------- | --------------------------------------------- |
+| `APP_NAME`                              | the app's name, e.g. `NIKU` (default `Tasks`) |
+| `DOMAIN`                                | `niku.duckdns.org` (no `https://`)            |
+| `ACME_EMAIL`                            | your email, for Let's Encrypt expiry notices  |
+| `POSTGRES_PASSWORD`                     | output of `openssl rand -hex 24`              |
+| `BETTER_AUTH_SECRET`                    | output of `openssl rand -base64 48`           |
+| `SMTP_USER`                             | your Gmail address                            |
+| `SMTP_PASS`                             | the Gmail app password from 7.2               |
+| `MAIL_FROM`                             | e.g. `NIKU <you@gmail.com>` (optional)        |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | from 7.3                                      |
+| `VAPID_SUBJECT`                         | `mailto:` + your email                        |
 
 Save with `Ctrl+O`, `Enter`, `Ctrl+X`.
 
@@ -365,7 +366,7 @@ curl https://niku.duckdns.org/api/health
 Then:
 
 1. Open `https://niku.duckdns.org` and create your account.
-2. **Test email:** log out, use *Forgot password*, and confirm the email arrives (check spam).
+2. **Test email:** log out, use _Forgot password_, and confirm the email arrives (check spam).
 3. **Test a reminder:** create a task with a reminder 2 minutes from now and wait for it.
 4. Send the link to your friend.
 
@@ -443,6 +444,9 @@ docker image prune -f
 
 Reminders that come due during the short restart are sent as soon as the API is back.
 
+To **rename the app**, change `APP_NAME` in `.env` and run the `build` and `up -d` lines above
+(the name is built into the web app, so a plain restart isn't enough).
+
 ---
 
 ## Part 12 — Staying free on Oracle
@@ -471,7 +475,7 @@ Reminders that come due during the short restart are sent as soon as the API is 
   SMTP submission, or switch to an email provider with a free tier that accepts port 2525
   (Nodemailer works with any SMTP provider).
 - **Push notifications don't arrive:** the browser must be running, notifications allowed for
-  the site, and *Browser push notifications* on in Settings.
+  the site, and _Browser push notifications_ on in Settings.
 - **API container keeps restarting:** `logs api` shows which environment variable is missing or
   invalid.
 - **Build runs out of memory:** make sure swap is on (`free -h`), then run the build again.

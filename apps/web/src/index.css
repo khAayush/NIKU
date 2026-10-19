@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* NIKU: black & white theme. Neutral (untinted) grays, black accents, Geist type. */
+/* Black & white theme. Neutral (untinted) grays, black accents, Geist type. */
 @theme {
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }

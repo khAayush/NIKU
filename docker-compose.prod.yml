@@ -10,6 +10,11 @@ x-logging: &logging
     max-size: '10m'
     max-file: '5'
 
+# The app's name is built into the web app, so changing APP_NAME needs `up -d --build`.
+# Every image gets the same args so they share the build stage's cache.
+x-build-args: &build-args
+  APP_NAME: ${APP_NAME:-}
+
 services:
   db:
     image: postgres:18-alpine
@@ -30,7 +35,7 @@ services:
     logging: *logging
 
   api:
-    build: { context: ., target: api }
+    build: { context: ., target: api, args: *build-args }
     image: todo-api
     restart: unless-stopped
     env_file: ${ENV_FILE:-.env}
@@ -48,7 +53,7 @@ services:
     logging: *logging
 
   migrate:
-    build: { context: ., target: migrate }
+    build: { context: ., target: migrate, args: *build-args }
     image: todo-migrate
     profiles: [tools]
     environment:
@@ -58,7 +63,7 @@ services:
     networks: [backend]
 
   caddy:
-    build: { context: ., target: web }
+    build: { context: ., target: web, args: *build-args }
     image: todo-web
     restart: unless-stopped
     environment:

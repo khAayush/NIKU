@@ -12,7 +12,7 @@ import { hashPassword, verifyPassword } from './password.js';
 const DAY = 60 * 60 * 24;
 
 export const auth = betterAuth({
-  appName: 'NIKU',
+  appName: env.APP_NAME,
   baseURL: env.WEB_ORIGIN,
   basePath: '/api/auth',
   secret: env.BETTER_AUTH_SECRET,
@@ -31,14 +31,14 @@ export const auth = betterAuth({
       // Not awaited, so response time doesn't reveal whether the email exists.
       void sendMail({
         to: user.email,
-        subject: 'Reset your NIKU password',
+        subject: `Reset your ${env.APP_NAME} password`,
         ...renderEmail({
           preheader: 'Use this link within 30 minutes to choose a new password.',
           eyebrow: 'Account',
           heading: 'Reset your password',
           paragraphs: [
             `Hi ${user.name},`,
-            'We received a request to reset the password for your NIKU account. ' +
+            `We received a request to reset the password for your ${env.APP_NAME} account. ` +
               'Use the button below to choose a new one.',
           ],
           button: { label: 'Choose a new password', url },

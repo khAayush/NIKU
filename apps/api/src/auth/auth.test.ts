@@ -1,6 +1,7 @@
 import { meSchema } from '@todo/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app.js';
+import { env } from '../lib/env.js';
 import { outbox } from '../lib/mailer.js';
 import { prisma } from '../lib/prisma.js';
 import {
@@ -179,7 +180,7 @@ describe('password reset', () => {
     const token = await requestReset(user.email);
     expect(token).toBeTruthy();
     const mail = outbox.find((m) => m.to === user.email)!;
-    expect(mail.subject).toBe('Reset your NIKU password');
+    expect(mail.subject).toBe(`Reset your ${env.APP_NAME} password`);
     expect(mail.html).toContain('Choose a new password');
     expect(mail.html).toContain('Please do not reply to this email');
 

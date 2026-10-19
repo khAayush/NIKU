@@ -1,6 +1,6 @@
-# NIKU
+# Tasks
 
-NIKU is a personal task & reminder web app. See [API.md](API.md) for the API and [DEPLOY.md](DEPLOY.md) for deployment.
+A personal task & reminder web app. Its name is set with `APP_NAME` in `.env` (default "Tasks"). See [API.md](API.md) for the API and [DEPLOY.md](DEPLOY.md) for deployment.
 
 ## Stack
 

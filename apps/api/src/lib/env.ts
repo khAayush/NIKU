@@ -24,12 +24,19 @@ const envSchema = z
      * Used for CORS, auth cookies/redirects, and links in emails.
      */
     WEB_ORIGIN: z.url().default('http://localhost:5173'),
+    /** The app's name, shown in emails (the web app reads the same variable at build time). */
+    APP_NAME: z
+      .string()
+      .trim()
+      .max(40)
+      .default('Tasks')
+      .transform((v) => v || 'Tasks'),
     /** Secret Better Auth uses to sign cookies and tokens. At least 32 characters. */
     BETTER_AUTH_SECRET: z.string().min(32),
     /** Gmail address used to send email, and its Google app password. */
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
-    /** "From" header for outgoing email, e.g. `NIKU <you@gmail.com>`. Defaults to `NIKU <SMTP_USER>`. */
+    /** "From" header for outgoing email, e.g. `Tasks <you@gmail.com>`. Defaults to `APP_NAME <SMTP_USER>`. */
     MAIL_FROM: z.string().optional(),
     /** Web Push VAPID keys (generate with `pnpm --filter @todo/api vapid:generate`). */
     VAPID_PUBLIC_KEY: z.string().optional(),

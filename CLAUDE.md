@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**NIKU**: personal task & reminder web app for a small group of users. API-first: the web app is one client; a future AR-glasses client will use the same API. Full requirements live in `SPEC.md` — read it before starting any phase.
+Personal task & reminder web app (its name comes from the `APP_NAME` env var, default "Tasks") for a small group of users. API-first: the web app is one client; a future AR-glasses client will use the same API. Full requirements live in `SPEC.md` — read it before starting any phase.
 
 ## Working rules
 
@@ -67,6 +67,7 @@ Run from the repo root (local Postgres must be up: `pnpm db:up`).
 - Prisma 7: config in `apps/api/prisma.config.ts`, client generated to `apps/api/src/generated/prisma` (gitignored) and created with `@prisma/adapter-pg`. `migrate dev` does not auto-generate — run `db:generate`.
 - Better Auth tables (`User`, `Session`, `Account`, `Verification`) were generated with `pnpm dlx auth@<version> generate`; keep their field names. App fields on `User` must also be declared as Better Auth `additionalFields`. The password hash lives in `Account.password`.
 - All `DateTime` columns are `@db.Timestamptz(3)`.
+- App name: never hardcode it. API uses `env.APP_NAME`; web uses `APP_NAME` from `apps/web/src/lib/app-name.ts` (Vite `define` from the same env var, `%APP_NAME%` in `index.html`). It's baked into the web build, so Docker passes it as a build arg.
 - Env vars are validated in `apps/api/src/lib/env.ts` (Zod). Local dev loads the repo-root `.env`; existing process env always wins.
 - `packages/shared` is consumed as TypeScript source (no build step); imports inside it use `.js` extensions.
 - New pnpm dependencies with install scripts must be allowed under `allowBuilds` in `pnpm-workspace.yaml`.

@@ -149,7 +149,7 @@ export async function deliverEmail(data: ReminderJobData): Promise<void> {
       heading: task.title,
       paragraphs: [`Hi ${task.user.name}, here's your reminder for this task.`],
       details: p.dueLabel ? [{ label: 'Due', value: p.dueLabel }] : [],
-      button: { label: 'Open NIKU', url: p.url },
+      button: { label: `Open ${env.APP_NAME}`, url: p.url },
       note: 'You can change when and how you get reminders in Settings.',
     }),
   });

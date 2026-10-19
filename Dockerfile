@@ -26,6 +26,8 @@ FROM deps AS build
 COPY . .
 # `prisma generate` reads the config, which needs a URL; it does not connect.
 ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
+# The app's name is built into the web app (empty = "Tasks"). Passed by docker-compose.prod.yml.
+ARG APP_NAME=""
 RUN pnpm --filter @todo/api db:generate \
  && pnpm --filter @todo/api build \
  && pnpm --filter @todo/web build
