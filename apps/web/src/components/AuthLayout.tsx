@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
 import { APP_NAME } from '../lib/app-name';
+import { isStandalone } from '../lib/pwa';
 
 /** Signed-out pages: black brand panel on wide screens, form on white. */
 export function AuthLayout({ title, children }: { title: string; children: ReactNode }) {
@@ -39,6 +41,14 @@ export function AuthLayout({ title, children }: { title: string; children: React
           </div>
           <h1 className="mb-8 text-3xl font-semibold tracking-tight text-neutral-950">{title}</h1>
           {children}
+          {!isStandalone && (
+            <p className="mt-10 text-center text-sm text-neutral-500">
+              Want it on your phone?{' '}
+              <Link to="/get-app" className="font-medium text-neutral-950 hover:underline">
+                Get the app
+              </Link>
+            </p>
+          )}
         </div>
       </main>
     </div>

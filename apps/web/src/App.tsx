@@ -5,7 +5,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { ListsPage } from './pages/ListsPage';
 import { OverduePage } from './pages/OverduePage';
 import { TodayPage } from './pages/TodayPage';
-import { RedirectIfSignedIn, RequireAuth } from './components/RouteGuards';
+import { PublicOrAppLayout, RedirectIfSignedIn, RequireAuth } from './components/RouteGuards';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { GetAppPage } from './pages/GetAppPage';
 import { LoginPage } from './pages/LoginPage';
@@ -24,6 +24,10 @@ export function App() {
       </Route>
       {/* Reachable signed in or out: the link comes from an email. */}
       <Route path="reset-password" element={<ResetPasswordPage />} />
+      {/* Anyone can install the app, signed in or not. */}
+      <Route element={<PublicOrAppLayout />}>
+        <Route path="get-app" element={<GetAppPage />} />
+      </Route>
 
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
@@ -33,7 +37,6 @@ export function App() {
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="all" element={<AllTasksPage />} />
           <Route path="lists" element={<ListsPage />} />
-          <Route path="get-app" element={<GetAppPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<PlaceholderPage title="Page not found" />} />
         </Route>
