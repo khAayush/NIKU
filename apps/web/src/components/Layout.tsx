@@ -29,7 +29,23 @@ const itemClass = (active: boolean) =>
       : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950'
   }`;
 
-/** Desktop-first: sidebar on wide screens, top bar on phones. */
+function MenuIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
+      {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+    </svg>
+  );
+}
+
+/** Desktop-first: sidebar on wide screens; on phones the same sidebar opens from a menu button. */
 export function Layout() {
   const { data: me } = useMe();
   const { data: lists = [] } = useLists();
@@ -39,14 +55,30 @@ export function Layout() {
   const activeList =
     location.pathname === '/all' ? new URLSearchParams(location.search).get('list') : null;
   const [search, setSearch] = useState('');
-  const navRef = useRef<HTMLElement>(null);
+  // Phone menu (the sidebar slides in). Always shown on wide screens.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
 
-  // Phones show the menu as a sideways-scrolling strip: keep the current page's item in view.
   useEffect(() => {
-    navRef.current
-      ?.querySelector('[aria-current="page"]')
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [location.pathname]);
+    if (menuOpen) {
+      wasOpen.current = true;
+      closeButton.current?.focus();
+      // Keep the page behind the menu from scrolling.
+      document.body.style.overflow = 'hidden';
+      const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+      document.addEventListener('keydown', onKey);
+      return () => {
+        document.body.style.overflow = '';
+        document.removeEventListener('keydown', onKey);
+      };
+    }
+    if (wasOpen.current) {
+      wasOpen.current = false;
+      menuButton.current?.focus();
+    }
+  }, [menuOpen]);
 
   async function onSignOut() {
     try {
@@ -64,12 +96,50 @@ export function Layout() {
     if (!q) return;
     navigate(`/all?completed=1&q=${encodeURIComponent(q)}`);
     setSearch('');
+    setMenuOpen(false);
   }
 
   return (
     <div className="min-h-dvh bg-white text-neutral-950 md:flex">
-      <aside className="border-b border-neutral-200/80 bg-neutral-50/60 md:sticky md:top-0 md:flex md:h-dvh md:w-64 md:shrink-0 md:flex-col md:border-r md:border-b-0">
-        <div className="flex items-center justify-between px-5 py-5 md:px-6 md:pt-8 md:pb-6">
+      {/* Phone top bar. */}
+      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-neutral-200/80 bg-white/90 px-3 py-2.5 backdrop-blur md:hidden">
+        <button
+          ref={menuButton}
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open menu"
+          aria-expanded={menuOpen}
+          aria-controls="app-menu"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-neutral-950 hover:bg-neutral-100"
+        >
+          <MenuIcon open={false} />
+        </button>
+        <Link to="/today" className="text-[15px] font-semibold tracking-[0.35em] text-neutral-950">
+          {APP_NAME}
+        </Link>
+      </header>
+
+      {/* Dims the page behind the open phone menu; tapping it closes the menu. */}
+      <div
+        aria-hidden="true"
+        onClick={() => setMenuOpen(false)}
+        className={`fixed inset-0 z-30 bg-neutral-950/30 transition-opacity duration-200 md:hidden ${
+          menuOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      />
+
+      <aside
+        id="app-menu"
+        aria-label="Menu"
+        // Picking a page or list closes the phone menu.
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('a')) setMenuOpen(false);
+        }}
+        className={`fixed top-0 left-0 z-40 flex h-dvh w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-neutral-200/80 bg-neutral-50 shadow-xl transition-[translate,visibility] duration-200 ${
+          menuOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'
+        } md:visible md:sticky md:z-auto md:w-64 md:max-w-none md:shrink-0 md:translate-x-0 md:bg-neutral-50/60 md:shadow-none md:transition-none`}
+      >
+        <div className="flex items-center justify-between px-6 pt-5 pb-5 md:pt-8 md:pb-6">
           <Link
             to="/today"
             className="text-[15px] font-semibold tracking-[0.35em] text-neutral-950"
@@ -77,14 +147,17 @@ export function Layout() {
             {APP_NAME}
           </Link>
           <button
-            onClick={onSignOut}
-            className="text-sm text-neutral-500 hover:text-neutral-950 md:hidden"
+            ref={closeButton}
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close menu"
+            className="-mr-2 flex h-10 w-10 items-center justify-center rounded-full text-neutral-950 hover:bg-neutral-100 md:hidden"
           >
-            Log out
+            <MenuIcon open />
           </button>
         </div>
 
-        <form onSubmit={onSearch} className="hidden px-4 pb-4 md:block" role="search">
+        <form onSubmit={onSearch} className="px-4 pb-4" role="search">
           <div className="relative">
             <svg
               viewBox="0 0 20 20"
@@ -108,7 +181,7 @@ export function Layout() {
           </div>
         </form>
 
-        <nav ref={navRef} className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:px-4">
+        <nav className="flex flex-col gap-1 px-4">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
@@ -121,7 +194,7 @@ export function Layout() {
           ))}
         </nav>
 
-        <div className="hidden px-4 pt-4 pb-6 md:block">
+        <div className="px-4 pt-6 pb-6">
           <div className="flex items-center justify-between px-3 pb-2 text-[11px] font-medium tracking-[0.15em] text-neutral-400 uppercase">
             Lists
             <Link
@@ -142,8 +215,8 @@ export function Layout() {
           {!lists.length && <p className="px-3 text-xs text-neutral-400">No lists yet</p>}
         </div>
 
-        {/* Account, pinned to the bottom of the sidebar on desktop. */}
-        <div className="mt-auto hidden items-center gap-3 border-t border-neutral-200/80 px-6 py-5 md:flex">
+        {/* Account, pinned to the bottom of the sidebar. */}
+        <div className="mt-auto flex items-center gap-3 border-t border-neutral-200/80 px-6 py-5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-xs font-semibold text-white">
             {me?.name.trim().charAt(0).toUpperCase()}
           </span>
