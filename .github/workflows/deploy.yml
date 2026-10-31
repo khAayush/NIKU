@@ -19,6 +19,8 @@ jobs:
   deploy:
     name: Deploy to Ubuntu
     runs-on: [self-hosted, linux, x64, piku]
+    # A normal deploy takes about 5 minutes; don't let a stuck one hang for hours.
+    timeout-minutes: 30
 
     steps:
       - name: Pull latest source code
@@ -41,3 +43,13 @@ jobs:
             -f docker-compose.prod.yml \
             -f docker-compose.tunnel.yml \
             ps
+
+      # Every rebuild leaves the previous images and build cache behind, which fills the disk.
+      # Keeps the images in use and the last 3 days of build cache (so builds stay fast).
+      # Never touches volumes (database, certificates).
+      - name: Free disk space
+        if: always()
+        run: |
+          docker image prune -f
+          docker builder prune -f --filter until=72h
+          df -h /
