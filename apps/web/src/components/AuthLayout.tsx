@@ -17,7 +17,7 @@ export function AuthLayout({ title, children }: { title: string; children: React
             Tasks, reminders and a calendar, kept quietly in order.
           </p>
         </div>
-        <p className="text-xs text-neutral-600">© Surgience LLC</p>
+        <p className="text-xs text-neutral-600">© Aayush Khatiwada</p>
         {/* Soft concentric rings as a subtle texture. */}
         <svg
           aria-hidden="true"
