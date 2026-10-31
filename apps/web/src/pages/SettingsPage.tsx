@@ -1,11 +1,13 @@
 import { deleteAccountSchema, updateMeSchema, type Me } from '@todo/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { ME_KEY, browserTimezone, deleteAccount, updateMe, useMe } from '../api/auth';
 import { PageHeader } from '../components/PageHeader';
 import { NotificationSettings } from '../components/NotificationSettings';
 import { Alert, Button, Field, SelectField, errorMessage, validate } from '../components/ui';
+import { APP_NAME } from '../lib/app-name';
+import { isStandalone } from '../lib/pwa';
 
 export function SettingsPage() {
   const { data: me } = useMe();
@@ -17,6 +19,19 @@ export function SettingsPage() {
       <Section title="Reminders">
         <NotificationSettings me={me} />
       </Section>
+      {!isStandalone && (
+        <Section title="Get the app">
+          <p className="mb-4 text-sm text-neutral-600">
+            Install {APP_NAME} on your phone or computer to open it from your Home Screen.
+          </p>
+          <Link
+            to="/get-app"
+            className="inline-flex items-center rounded-full border border-neutral-200 bg-white px-5 py-2.5 text-sm font-medium tracking-tight text-neutral-900 transition hover:border-neutral-300 hover:bg-neutral-50"
+          >
+            How to install
+          </Link>
+        </Section>
+      )}
       <DeleteAccountSection />
     </div>
   );

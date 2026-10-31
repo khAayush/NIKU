@@ -5,14 +5,6 @@ import { api } from '../api/client';
 export const pushSupported =
   'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
-/** Registers the service worker (only used for push notifications). */
-export function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('/sw.js').catch((err) => {
-    console.warn('Service worker registration failed', err);
-  });
-}
-
 function base64UrlToBytes(base64Url: string): Uint8Array<ArrayBuffer> {
   const padded = (base64Url + '='.repeat((4 - (base64Url.length % 4)) % 4))
     .replace(/-/g, '+')

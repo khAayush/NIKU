@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isIOS, isStandalone } from '../lib/pwa';
 
 // Minimal typings for the Web Speech API (Chrome exposes it as webkitSpeechRecognition).
 interface SpeechRecognitionResultLike {
@@ -44,7 +45,8 @@ const ERROR_MESSAGES: Record<string, string> = {
  * transcript while speaking. `supported` is false when the browser has no Web Speech API.
  */
 export function useSpeechRecognition() {
-  const [supported] = useState(() => getCtor() !== null);
+  // iOS exposes the API in the installed (Home Screen) app, but it doesn't work there.
+  const [supported] = useState(() => getCtor() !== null && !(isIOS && isStandalone));
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
   const [error, setError] = useState('');

@@ -119,7 +119,7 @@ export function QuickAdd() {
 
       {!speech.supported && (
         <p className="mt-2 pl-4 text-xs text-neutral-400">
-          Voice input isn't available in this browser. Typing works everywhere.
+          Voice input isn't available here. Typing works everywhere.
         </p>
       )}
       {speech.error && <p className="mt-2 pl-4 text-xs text-rose-600">{speech.error}</p>}

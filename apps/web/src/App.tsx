@@ -7,6 +7,7 @@ import { OverduePage } from './pages/OverduePage';
 import { TodayPage } from './pages/TodayPage';
 import { RedirectIfSignedIn, RequireAuth } from './components/RouteGuards';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { GetAppPage } from './pages/GetAppPage';
 import { LoginPage } from './pages/LoginPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
@@ -32,6 +33,7 @@ export function App() {
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="all" element={<AllTasksPage />} />
           <Route path="lists" element={<ListsPage />} />
+          <Route path="get-app" element={<GetAppPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<PlaceholderPage title="Page not found" />} />
         </Route>

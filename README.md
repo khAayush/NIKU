@@ -1,6 +1,6 @@
 # Tasks
 
-A personal task & reminder web app. Its name is set with `APP_NAME` in `.env` (default "Tasks"). See [API.md](API.md) for the API and [DEPLOY.md](DEPLOY.md) for deployment.
+A personal task & reminder web app. Its name is set with `APP_NAME` in `.env` (default "Tasks"). It can be installed on phones and computers as a PWA: see the app's **Get the app** page. See [API.md](API.md) for the API and [DEPLOY.md](DEPLOY.md) for deployment.
 
 ## Stack
 
@@ -44,6 +44,11 @@ database (schema `pgboss`), so they survive API restarts. In-app reminders pop u
 tab. For browser push, generate VAPID keys (`pnpm --filter @todo/api vapid:generate`), put them
 in `.env`, restart the API and turn on _Browser push notifications_ in Settings (Chrome works on
 `http://localhost`).
+
+**Installable app (PWA) in development:** the manifest and install prompt work on
+`http://localhost:5173`, but the service worker only caches the app shell in production builds
+(`pnpm --filter @todo/web build`), so `pnpm dev` always serves fresh files. Installing on a phone
+needs HTTPS, i.e. the deployed app.
 
 **Emails in development:** if `SMTP_USER`/`SMTP_PASS` are empty, emails (e.g. password reset links)
 are not sent; they are printed in the API's log so you can copy the link.

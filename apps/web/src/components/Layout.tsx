@@ -1,9 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { ME_KEY, signOut, useMe } from '../api/auth';
 import { useLists } from '../api/tasks';
 import { APP_NAME } from '../lib/app-name';
+import { isStandalone } from '../lib/pwa';
+import { OfflineBanner } from './OfflineScreen';
 import { QuickAdd } from './QuickAdd';
 import { ReminderToasts } from './ReminderToasts';
 
@@ -15,6 +17,8 @@ const NAV = [
   { to: '/overdue', label: 'Overdue' },
   { to: '/calendar', label: 'Calendar' },
   { to: '/all', label: 'All tasks' },
+  // Already running as the installed app: nothing to get.
+  ...(isStandalone ? [] : [{ to: '/get-app', label: 'Get the app' }]),
   { to: '/settings', label: 'Settings' },
 ];
 
@@ -35,6 +39,14 @@ export function Layout() {
   const activeList =
     location.pathname === '/all' ? new URLSearchParams(location.search).get('list') : null;
   const [search, setSearch] = useState('');
+  const navRef = useRef<HTMLElement>(null);
+
+  // Phones show the menu as a sideways-scrolling strip: keep the current page's item in view.
+  useEffect(() => {
+    navRef.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [location.pathname]);
 
   async function onSignOut() {
     try {
@@ -96,7 +108,7 @@ export function Layout() {
           </div>
         </form>
 
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:px-4">
+        <nav ref={navRef} className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:px-4">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
@@ -147,6 +159,7 @@ export function Layout() {
         <main
           className={`mx-auto w-full flex-1 px-5 py-8 md:px-12 md:py-12 ${location.pathname === '/calendar' ? 'max-w-7xl' : 'max-w-4xl'}`}
         >
+          <OfflineBanner />
           {QUICK_ADD_PAGES.includes(location.pathname) && <QuickAdd />}
           <Outlet />
         </main>

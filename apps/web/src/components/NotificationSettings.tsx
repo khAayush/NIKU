@@ -1,6 +1,7 @@
 import { REMINDER_MINUTES, type Me, type UpdateMeInput } from '@todo/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import { ME_KEY, updateMe } from '../api/auth';
 import {
   currentSubscription,
@@ -9,6 +10,7 @@ import {
   unsubscribeFromPush,
 } from '../lib/push';
 import { reminderLabel } from '../lib/format';
+import { isIOS, isStandalone } from '../lib/pwa';
 import { errorMessage } from './ui';
 
 function Toggle({
@@ -61,6 +63,8 @@ export function NotificationSettings({ me }: { me: Me }) {
   });
   const thisBrowserSubscribed = Boolean(subscription.data);
   const blocked = pushSupported && Notification.permission === 'denied';
+  // iPhone/iPad only allow push in the app added to the Home Screen (iOS 16.4+).
+  const needsInstall = isIOS && !isStandalone;
 
   async function save(input: UpdateMeInput) {
     queryClient.setQueryData(ME_KEY, await updateMe(input));
@@ -149,16 +153,27 @@ export function NotificationSettings({ me }: { me: Me }) {
         <Toggle
           label="Browser push notifications"
           description={
-            !pushSupported
-              ? "This browser doesn't support push notifications."
-              : blocked
-                ? 'Notifications are blocked for this site. Allow them in the browser settings first.'
-                : me.notifyPush && !thisBrowserSubscribed
-                  ? 'On for your other browsers. Turn off and on again to add this browser.'
-                  : 'Show reminders even when the app tab is closed (the browser must be running).'
+            needsInstall ? (
+              <>
+                On iPhone and iPad, push notifications only work in the installed app (iOS 16.4 or
+                later).{' '}
+                <Link to="/get-app" className="font-medium text-neutral-950 underline">
+                  Install the app first
+                </Link>
+                , then turn this on there.
+              </>
+            ) : !pushSupported ? (
+              "This browser doesn't support push notifications."
+            ) : blocked ? (
+              'Notifications are blocked for this site. Allow them in the browser settings first.'
+            ) : me.notifyPush && !thisBrowserSubscribed ? (
+              'On for your other browsers. Turn off and on again to add this browser.'
+            ) : (
+              'Show reminders even when the app tab is closed (the browser must be running).'
+            )
           }
-          checked={me.notifyPush && (thisBrowserSubscribed || !pushSupported)}
-          disabled={busy || !pushSupported || blocked}
+          checked={me.notifyPush && (thisBrowserSubscribed || !pushSupported || needsInstall)}
+          disabled={busy || !pushSupported || blocked || needsInstall}
           onChange={setPush}
         />
         <Toggle
