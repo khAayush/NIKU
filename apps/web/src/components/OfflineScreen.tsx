@@ -73,14 +73,10 @@ export function OfflineBanner() {
   return (
     <div
       role="status"
-      className="mb-6 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm leading-relaxed text-neutral-700"
+      className="mb-6 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm text-neutral-700"
     >
-      <p className="font-medium text-neutral-950">You're offline</p>
-      <p className="mt-0.5">
-        You're seeing what was saved on this device. You can still tick off tasks and checklist
-        items and add checklist items; they'll sync when you're back online.
-        {unsynced > 0 && <span className="font-medium text-neutral-950"> {changes} waiting.</span>}
-      </p>
+      <span className="font-medium text-neutral-950">You're offline.</span> Your changes will sync
+      when you're back online.
     </div>
   );
 }
