@@ -146,15 +146,28 @@ export function ChecklistsPage() {
     };
   }, [data, query]);
 
-  const card = (c: Checklist) => (
-    <ChecklistCard
-      key={c.id}
-      checklist={c}
-      open={matchedItems.has(c.id) || c.id === focusId || isOpen(c)}
-      onToggle={() => toggle(c)}
-      autoFocusAdd={c.id === focusId}
-    />
-  );
+  // While searching, checklists with matching items start open; opening/closing them then only
+  // lasts for that search, and doesn't change what's remembered.
+  const [searchToggles, setSearchToggles] = useState<{
+    query: string;
+    open: Record<string, boolean>;
+  }>({ query: '', open: {} });
+  const toggledNow = searchToggles.query === query ? searchToggles.open : {};
+
+  const card = (c: Checklist) => {
+    const open = query ? (toggledNow[c.id] ?? (matchedItems.has(c.id) || isOpen(c))) : isOpen(c);
+    return (
+      <ChecklistCard
+        key={c.id}
+        checklist={c}
+        open={open}
+        onToggle={() =>
+          query ? setSearchToggles({ query, open: { ...toggledNow, [c.id]: !open } }) : toggle(c)
+        }
+        autoFocusAdd={c.id === focusId}
+      />
+    );
+  };
 
   return (
     <>
@@ -535,7 +548,7 @@ function AddItemForm({ checklistId, autoFocus }: { checklistId: string; autoFocu
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed) return input.current?.focus();
     // Clear at once, so the next item can be typed while this one saves.
     setText('');
     input.current?.focus();
@@ -548,17 +561,25 @@ function AddItemForm({ checklistId, autoFocus }: { checklistId: string; autoFocu
   return (
     <form onSubmit={onSubmit} className="border-t border-neutral-100 px-5 py-3">
       <div className="flex items-center gap-3">
-        <svg
-          viewBox="0 0 20 20"
-          aria-hidden="true"
-          className="h-5 w-5 shrink-0 text-neutral-400"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
+        {/* Adds what's typed; with nothing typed it puts the cursor in the field. */}
+        <button
+          type="submit"
+          aria-label="Add item"
+          title="Add item"
+          className="-m-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
         >
-          <path d="M10 5v10M5 10h10" />
-        </svg>
+          <svg
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          >
+            <path d="M10 5v10M5 10h10" />
+          </svg>
+        </button>
         <input
           ref={input}
           className="min-w-0 flex-1 bg-transparent py-1 text-[15px] text-neutral-950 placeholder:text-neutral-400 focus:outline-none"
