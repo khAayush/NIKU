@@ -188,6 +188,37 @@ Deleting a list does **not** delete its tasks; they move to "no list" (`listId: 
 
 ---
 
+## Checklists (`/api/checklists`) — requires a session
+
+Simple checklists: a title and items to tick off (no due dates or reminders). A checklist object:
+
+```json
+{
+  "id": "uuid",
+  "title": "Groceries",
+  "items": [
+    { "id": "uuid", "text": "Milk", "done": true },
+    { "id": "uuid", "text": "Bread", "done": false }
+  ],
+  "createdAt": "2026-11-01T10:00:00.000Z",
+  "updatedAt": "2026-11-01T10:05:00.000Z"
+}
+```
+
+Items are in the order they were added; checked items stay in place.
+
+| Method & path                              | Body                                        | Success                                     | Errors                                                       |
+| ------------------------------------------ | ------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------ |
+| `GET /api/checklists`                      | —                                           | **200** `{ "items": [...] }` (newest first) |                                                              |
+| `POST /api/checklists`                     | `{ "title": "Groceries" }`                  | **201** the checklist                       | 400 `VALIDATION_ERROR` (1–100 chars)                         |
+| `PATCH /api/checklists/:id`                | `{ "title": "Weekly shop" }`                | **200** the checklist                       | 400, 404 `NOT_FOUND`                                         |
+| `DELETE /api/checklists/:id`               | —                                           | **204** (deletes its items too)             | 404                                                          |
+| `POST /api/checklists/:id/items`           | `{ "text": "Milk" }`                        | **201** the item (added last)               | 400 (1–200 chars), 404, 409 `CHECKLIST_FULL` (200 items max) |
+| `PATCH /api/checklists/:id/items/:itemId`  | `{ "done": true }` and/or `{ "text": "…" }` | **200** the item                            | 400 (empty body), 404                                        |
+| `DELETE /api/checklists/:id/items/:itemId` | —                                           | **204**                                     | 404                                                          |
+
+---
+
 ## Tasks (`/api/tasks`) — requires a session
 
 A task object:

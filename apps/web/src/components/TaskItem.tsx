@@ -3,6 +3,7 @@ import { useMe } from '../api/auth';
 import { useLists, useSetTaskDone } from '../api/tasks';
 import { formatDateTime, formatDue, RECURRENCE_LABEL } from '../lib/format';
 import { SnoozeMenu } from './SnoozeMenu';
+import { RoundCheckbox } from './ui';
 
 const PRIORITY_STYLE: Record<Task['priority'], string> = {
   HIGH: 'bg-neutral-950 text-white',
@@ -56,29 +57,12 @@ export function TaskItem({
 
   return (
     <li className="group flex items-start gap-3.5 px-4 py-3.5 transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-neutral-50">
-      {/* Round checkbox: a real input (keyboard + screen readers), drawn as a circle. */}
-      <span className="relative mt-0.5 flex h-5 w-5 shrink-0">
-        <input
-          type="checkbox"
-          checked={done}
-          disabled={setDone.isPending}
-          onChange={() => setDone.mutate({ id: task.id, done: !done })}
-          aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
-          className="peer h-5 w-5 cursor-pointer appearance-none rounded-full border-[1.5px] border-neutral-300 transition-colors checked:border-neutral-950 checked:bg-neutral-950 hover:border-neutral-950"
-        />
-        <svg
-          viewBox="0 0 16 16"
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 m-auto h-3 w-3 text-white opacity-0 peer-checked:opacity-100"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M3.5 8.5l3 3 6-7" />
-        </svg>
-      </span>
+      <RoundCheckbox
+        checked={done}
+        disabled={setDone.isPending}
+        onChange={() => setDone.mutate({ id: task.id, done: !done })}
+        label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
+      />
 
       <button type="button" onClick={() => onEdit(task)} className="min-w-0 flex-1 text-left">
         <div

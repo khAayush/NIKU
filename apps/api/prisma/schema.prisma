@@ -92,6 +92,35 @@ model TaskReminder {
   @@map("task_reminder")
 }
 
+/// A simple checklist: a title and items to tick off. No due dates or reminders.
+model Checklist {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String          @db.VarChar(100)
+  items     ChecklistItem[]
+  createdAt DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime        @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("checklist")
+}
+
+model ChecklistItem {
+  id          String    @id @default(uuid())
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  text        String    @db.VarChar(200)
+  /// Checked items stay in place (shown faded).
+  done        Boolean   @default(false)
+  /// Order within the checklist (new items go last).
+  position    Int
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([checklistId, position])
+  @@map("checklist_item")
+}
+
 model PushSubscription {
   id        String   @id @default(uuid())
   userId    String
@@ -127,6 +156,7 @@ model User {
   lists             List[]
   tasks             Task[]
   pushSubscriptions PushSubscription[]
+  checklists        Checklist[]
 
   @@unique([email])
   @@map("user")

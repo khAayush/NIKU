@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import { Layout } from './components/Layout';
 import { AllTasksPage } from './pages/AllTasksPage';
 import { CalendarPage } from './pages/CalendarPage';
+import { ChecklistsPage } from './pages/ChecklistsPage';
 import { ListsPage } from './pages/ListsPage';
 import { OverduePage } from './pages/OverduePage';
 import { TodayPage } from './pages/TodayPage';
@@ -36,6 +37,7 @@ export function App() {
           <Route path="overdue" element={<OverduePage />} />
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="all" element={<AllTasksPage />} />
+          <Route path="checklists" element={<ChecklistsPage />} />
           <Route path="lists" element={<ListsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<PlaceholderPage title="Page not found" />} />

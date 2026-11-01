@@ -182,3 +182,41 @@ export function errorMessage(err: unknown) {
   }
   return 'Something went wrong. Please check your connection and try again.';
 }
+
+/** Round checkbox (tasks, checklist items): a real input for keyboard and screen readers. */
+export function RoundCheckbox({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <span className="relative mt-0.5 flex h-5 w-5 shrink-0">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+        aria-label={label}
+        className="peer h-5 w-5 cursor-pointer appearance-none rounded-full border-[1.5px] border-neutral-300 transition-colors checked:border-neutral-950 checked:bg-neutral-950 hover:border-neutral-950"
+      />
+      <svg
+        viewBox="0 0 16 16"
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 m-auto h-3 w-3 text-white opacity-0 peer-checked:opacity-100"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M3.5 8.5l3 3 6-7" />
+      </svg>
+    </span>
+  );
+}

@@ -7,6 +7,7 @@ import { healthRoutes } from './health/routes.js';
 import { env } from './lib/env.js';
 import { AppError, registerErrorHandlers } from './lib/errors.js';
 import { logger } from './lib/logger.js';
+import { checklistRoutes } from './checklists/routes.js';
 import { listRoutes } from './lists/routes.js';
 import { parseRoutes } from './parse/routes.js';
 import { pushRoutes } from './push/routes.js';
@@ -53,6 +54,7 @@ export async function buildApp() {
         protectedApi.addHook('preHandler', authenticate);
         await protectedApi.register(userRoutes);
         await protectedApi.register(listRoutes);
+        await protectedApi.register(checklistRoutes);
         await protectedApi.register(parseRoutes);
         await protectedApi.register(pushRoutes);
         await protectedApi.register(taskRoutes);

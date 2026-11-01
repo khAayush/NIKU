@@ -17,6 +17,7 @@ const NAV = [
   { to: '/overdue', label: 'Overdue' },
   { to: '/calendar', label: 'Calendar' },
   { to: '/all', label: 'All tasks' },
+  { to: '/checklists', label: 'Checklists' },
   // Already running as the installed app: nothing to get.
   ...(isStandalone ? [] : [{ to: '/get-app', label: 'Get the app' }]),
   { to: '/settings', label: 'Settings' },
