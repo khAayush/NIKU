@@ -28,13 +28,34 @@ jobs:
           cd /opt/todo
           git pull --ff-only origin main
 
-      - name: Rebuild and restart PIKU
+      # Build first (including the migrate image, which is in the "tools" profile), so the
+      # running app keeps serving while this happens.
+      - name: Build images
         run: |
           cd /opt/todo
           docker compose \
             -f docker-compose.prod.yml \
             -f docker-compose.tunnel.yml \
-            up -d --build
+            --profile tools \
+            build
+
+      # Database changes must be applied before the new API starts. Safe to run every time:
+      # it does nothing when there are no new migrations.
+      - name: Run database migrations
+        run: |
+          cd /opt/todo
+          docker compose \
+            -f docker-compose.prod.yml \
+            -f docker-compose.tunnel.yml \
+            run --rm migrate
+
+      - name: Restart PIKU
+        run: |
+          cd /opt/todo
+          docker compose \
+            -f docker-compose.prod.yml \
+            -f docker-compose.tunnel.yml \
+            up -d
 
       - name: Verify running containers
         run: |

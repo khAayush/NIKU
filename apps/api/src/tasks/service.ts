@@ -35,10 +35,10 @@ const ORDER: Prisma.TaskOrderByWithRelationInput[] = [
   { createdAt: 'asc' },
 ];
 
-/** Loads the next pending reminder with each task, for `nextReminderAt`. */
+/** Loads the next pending reminder with each task, for `nextReminderAt` (not the deadline notice). */
 const WITH_NEXT_REMINDER = {
   reminders: {
-    where: { sentAt: null },
+    where: { sentAt: null, deadline: false },
     orderBy: { remindAt: 'asc' },
     take: 1,
     select: { remindAt: true },

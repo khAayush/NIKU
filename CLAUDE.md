@@ -37,6 +37,7 @@ Inside `apps/api/src`, code is organised by feature module (`auth/`, `tasks/`, `
 - Recurrence is computed in the user's timezone from the **due date** (or the reminder time when there is no due date), never from the completion date. Only one next occurrence, always in the future.
 - Monthly recurrence keeps the original day (`recurrenceDay`) and clamps to month end without drifting. A repeating task needs a due date.
 - Reminders are **not** set per task: they come from the user's `reminderMinutes` (30 min, 1/2/3/6/12/24/48 h before the due time, stored in minutes; all-day tasks count back from 06:00). Snooze adds a one-off `TaskReminder` (`minutesBefore` null), never changes `dueAt`.
+- "Deadline passed" notice: a `TaskReminder` with `deadline = true` at the due time (all-day: 9:00 next day, `deadlineTime`), always on, synced by `syncTaskReminders` like the others; payload `kind: 'deadline'`; excluded from `nextReminderAt`. `addMissingDeadlineReminders` backfills at startup.
 
 ### Reminders
 

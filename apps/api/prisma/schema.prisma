@@ -69,14 +69,17 @@ model Task {
   @@map("task")
 }
 
-/// One scheduled reminder for a task: from the user's settings (`minutesBefore`) or a snooze
-/// (`minutesBefore` null). Kept in sync with the task's due date and the user's settings.
+/// One scheduled reminder for a task: from the user's settings (`minutesBefore`), a snooze
+/// (`minutesBefore` null), or the "deadline passed" notice (`deadline`). Kept in sync with the
+/// task's due date and the user's settings.
 model TaskReminder {
   id            String    @id @default(uuid())
   taskId        String
   task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  /// Minutes before the due time (from settings); null for a one-off snooze.
+  /// Minutes before the due time (from settings); null for a snooze or the deadline notice.
   minutesBefore Int?
+  /// The "deadline passed" notice: at the due time (all-day tasks: 9:00 the next day).
+  deadline      Boolean   @default(false)
   remindAt      DateTime  @db.Timestamptz(3)
   /// pg-boss job that fires at `remindAt`.
   jobId         String?

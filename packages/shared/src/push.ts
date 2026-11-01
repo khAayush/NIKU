@@ -17,6 +17,8 @@ export type PushPublicKey = z.infer<typeof pushPublicKeySchema>;
 
 /** Payload of the Socket.IO `reminder` event and of push messages. */
 export const reminderPayloadSchema = z.object({
+  /** `reminder`: before the due time (or a snooze). `deadline`: the due time has passed. */
+  kind: z.enum(['reminder', 'deadline']),
   taskId: z.string(),
   title: z.string(),
   dueAt: z.string().nullable(),

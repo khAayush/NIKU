@@ -73,11 +73,21 @@ function ReminderToast({ reminder, onClose }: { reminder: ReminderPayload; onClo
           </svg>
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium tracking-[0.15em] text-neutral-400 uppercase">
-            Reminder
-          </p>
+          {reminder.kind === 'deadline' ? (
+            <p className="text-[11px] font-medium tracking-[0.15em] text-rose-400 uppercase">
+              Deadline passed
+            </p>
+          ) : (
+            <p className="text-[11px] font-medium tracking-[0.15em] text-neutral-400 uppercase">
+              Reminder
+            </p>
+          )}
           <p className="mt-0.5 truncate text-[15px] font-medium text-white">{reminder.title}</p>
-          {reminder.dueLabel && <p className="text-xs text-neutral-400">Due {reminder.dueLabel}</p>}
+          {reminder.dueLabel && (
+            <p className="text-xs text-neutral-400">
+              {reminder.kind === 'deadline' ? 'Was due' : 'Due'} {reminder.dueLabel}
+            </p>
+          )}
         </div>
         <button
           onClick={onClose}

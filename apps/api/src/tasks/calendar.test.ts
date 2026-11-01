@@ -132,7 +132,12 @@ describe('POST /api/tasks/:id/snooze', () => {
       where: { taskId: t.id },
       orderBy: { remindAt: 'asc' },
     });
-    expect(reminders.map((r) => r.minutesBefore)).toEqual([null, 60]);
+    // Snooze, the 1-hour reminder, then the deadline notice (all kept).
+    expect(reminders.map((r) => [r.minutesBefore, r.deadline])).toEqual([
+      [null, false],
+      [60, false],
+      [null, true],
+    ]);
     expect(reminders[1]!.remindAt.getTime()).toBe(due.getTime() - 3_600_000);
   });
 

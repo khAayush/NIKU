@@ -4,6 +4,7 @@ import { logger } from './lib/logger.js';
 import { verifyMailer } from './lib/mailer.js';
 import { prisma } from './lib/prisma.js';
 import { attachSocketServer } from './reminders/socket.js';
+import { addMissingDeadlineReminders } from './reminders/schedule.js';
 import { catchUpMissedReminders, startReminderWorkers } from './reminders/workers.js';
 
 // Anything that escapes a handler is logged in the same structured format, then the process
@@ -45,6 +46,7 @@ try {
   await startReminderWorkers();
   // Reminders that came due while the server was down are sent now instead of being skipped.
   await catchUpMissedReminders();
+  await addMissingDeadlineReminders();
   await app.listen({ port: env.PORT, host: env.HOST });
   void verifyMailer();
 } catch (err) {

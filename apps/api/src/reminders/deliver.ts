@@ -15,6 +15,8 @@ if (pushEnabled) {
 
 /** What every channel shows for a reminder. Also the Socket.IO `reminder` event payload. */
 export interface ReminderPayload {
+  /** `reminder`: before the due time (or a snooze). `deadline`: the due time has passed. */
+  kind: 'reminder' | 'deadline';
   taskId: string;
   title: string;
   dueAt: string | null;
@@ -62,8 +64,9 @@ async function currentReminder(data: ReminderJobData) {
 
 type CurrentReminder = NonNullable<Awaited<ReturnType<typeof currentReminder>>>;
 
-function payloadFor({ task, remindAt }: CurrentReminder): ReminderPayload {
+function payloadFor({ task, remindAt, deadline }: CurrentReminder): ReminderPayload {
   return {
+    kind: deadline ? 'deadline' : 'reminder',
     taskId: task.id,
     title: task.title,
     dueAt: task.dueAt?.toISOString() ?? null,
@@ -140,6 +143,26 @@ export async function deliverEmail(data: ReminderJobData): Promise<void> {
   const { task } = reminder;
 
   const p = payloadFor(reminder);
+  const details = p.dueLabel ? [{ label: 'Due', value: p.dueLabel }] : [];
+  const button = { label: `Open ${env.APP_NAME}`, url: p.url };
+  if (p.kind === 'deadline') {
+    await sendMail({
+      to: task.user.email,
+      subject: `Deadline passed: ${task.title}`,
+      ...renderEmail({
+        preheader: p.dueLabel ? `Was due ${p.dueLabel}` : `Deadline passed: ${task.title}`,
+        eyebrow: 'Deadline passed',
+        heading: task.title,
+        paragraphs: [
+          `Hi ${task.user.name}, the deadline for this task has passed and it isn't marked as done yet.`,
+        ],
+        details,
+        button,
+        note: 'Mark it as done, or move it to a new date, in the app.',
+      }),
+    });
+    return;
+  }
   await sendMail({
     to: task.user.email,
     subject: `Reminder: ${task.title}`,
@@ -148,8 +171,8 @@ export async function deliverEmail(data: ReminderJobData): Promise<void> {
       eyebrow: 'Reminder',
       heading: task.title,
       paragraphs: [`Hi ${task.user.name}, here's your reminder for this task.`],
-      details: p.dueLabel ? [{ label: 'Due', value: p.dueLabel }] : [],
-      button: { label: `Open ${env.APP_NAME}`, url: p.url },
+      details,
+      button,
       note: 'You can change when and how you get reminders in Settings.',
     }),
   });

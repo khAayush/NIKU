@@ -145,7 +145,8 @@ describe('editing and deleting', () => {
     const later = new Date(due.getTime() + 24 * HOUR);
     const res = await api(u).update(t.id, { dueAt: iso(later) });
     expect(res.json().nextReminderAt).toBe(iso(new Date(later.getTime() - HOUR)));
-    expect(await prisma.taskReminder.count({ where: { taskId: t.id } })).toBe(1);
+    // The 1-hour reminder and the deadline notice.
+    expect(await prisma.taskReminder.count({ where: { taskId: t.id } })).toBe(2);
   });
 
   it('removes the reminders when the due date is removed', async () => {

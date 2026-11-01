@@ -358,7 +358,14 @@ task with a due date gets one reminder per chosen time, that many minutes before
 (all-day tasks: before **6:00** on their day). Reminder times already in the past when a task is
 created or changed are skipped. They are scheduled on the server (pg-boss) and kept in sync when
 the due date, the task's status or the settings change; snoozes add one-off reminders.
-A task's next pending reminder is shown as `nextReminderAt`. When a reminder fires it is delivered once through every channel the user
+
+**Deadline passed:** every open task with a due date also gets a "deadline passed" notification
+(always on, independent of `reminderMinutes`): at the due time, or for all-day tasks at **9:00
+the next day** in the user's timezone. It is cancelled when the task is completed or deleted and
+moves with the due date.
+
+A task's next pending reminder is shown as `nextReminderAt` (the deadline notification is not
+included). When a reminder fires it is delivered once through every channel the user
 enabled (`notifyInApp`, `notifyPush`, `notifyEmail`). Push and email deliveries are retried with
 exponential backoff (up to 5 retries) and failures are logged. Reminders that came due while the
 server was down are sent when it starts.
@@ -368,10 +375,12 @@ server was down are sent when it starts.
 Connect to path `/socket.io` on the app's origin with the session cookie (browsers send it
 automatically). Connections without a valid session are rejected with `UNAUTHENTICATED`.
 
-Event `reminder` (server → client):
+Event `reminder` (server → client). `kind` is `"reminder"` (before the due time, or a snooze)
+or `"deadline"` (the due time has passed):
 
 ```json
 {
+  "kind": "reminder",
   "taskId": "uuid",
   "title": "Submit report",
   "dueAt": "2026-10-18T16:00:00.000Z",

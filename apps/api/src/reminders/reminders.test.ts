@@ -15,7 +15,7 @@ import {
   type PushJobData,
 } from './deliver.js';
 import { getBoss, QUEUES } from './queue.js';
-import type { ReminderJobData } from './schedule.js';
+import { addMissingDeadlineReminders, type ReminderJobData } from './schedule.js';
 import { attachSocketServer } from './socket.js';
 import { catchUpMissedReminders, startReminderWorkers } from './workers.js';
 
@@ -48,9 +48,16 @@ async function createTask(u: User, payload: object): Promise<Task> {
 const setMinutes = (u: User, reminderMinutes: number[]) =>
   call(u, 'PATCH', '/api/me', { reminderMinutes });
 
-/** The task's reminders, earliest first. */
+/** The task's reminders (not the deadline notice), earliest first. */
 const reminders = (taskId: string) =>
-  prisma.taskReminder.findMany({ where: { taskId }, orderBy: { remindAt: 'asc' } });
+  prisma.taskReminder.findMany({
+    where: { taskId, deadline: false },
+    orderBy: { remindAt: 'asc' },
+  });
+
+/** The task's "deadline passed" notice, if any. */
+const deadlineNotice = (taskId: string) =>
+  prisma.taskReminder.findFirst({ where: { taskId, deadline: true } });
 
 async function job(id: string | null) {
   if (!id) return null;
@@ -245,6 +252,103 @@ describe('keeping reminders in sync with the task', () => {
   });
 });
 
+describe('deadline passed notice', () => {
+  it('fires at the due time for every dated task, even with no reminders chosen', async () => {
+    const u = await signUp(app);
+    await setMinutes(u, []);
+    const due = inMinutes(600);
+    const t = await createTask(u, { title: 'A', dueAt: iso(due) });
+
+    const notice = (await deadlineNotice(t.id))!;
+    expect(notice).toMatchObject({ deadline: true, minutesBefore: null, sentAt: null });
+    expect(notice.remindAt.getTime()).toBe(due.getTime());
+    expect((await job(notice.jobId))!.startAfter.getTime()).toBe(due.getTime());
+    // It isn't a reminder: the task shows no upcoming reminder.
+    expect(t.nextReminderAt).toBeNull();
+  });
+
+  it('fires at 9:00 the next morning for all-day tasks', async () => {
+    const tz = 'America/New_York';
+    const u = await signUp(app, { timezone: tz });
+    const day = DateTime.now().setZone(tz).plus({ days: 3 }).toFormat('yyyy-MM-dd');
+    const t = await createTask(u, {
+      title: 'All day',
+      dueAt: iso(localToUtc(day, null, tz)!),
+      dueAllDay: true,
+    });
+    const at = DateTime.fromJSDate((await deadlineNotice(t.id))!.remindAt, { zone: tz });
+    const nextDay = DateTime.fromISO(day, { zone: tz }).plus({ days: 1 }).toFormat('yyyy-MM-dd');
+    expect(at.toFormat("yyyy-MM-dd'T'HH:mm")).toBe(`${nextDay}T09:00`);
+  });
+
+  it('follows the due date, and goes away when done or undated', async () => {
+    const u = await signUp(app);
+    const t = await createTask(u, { title: 'A', dueAt: iso(inMinutes(600)) });
+    const first = (await deadlineNotice(t.id))!;
+
+    await call(u, 'PATCH', `/api/tasks/${t.id}`, { title: 'Renamed' });
+    expect((await deadlineNotice(t.id))!.jobId).toBe(first.jobId);
+
+    const later = inMinutes(900);
+    await call(u, 'PATCH', `/api/tasks/${t.id}`, { dueAt: iso(later) });
+    const moved = (await deadlineNotice(t.id))!;
+    expect(moved.remindAt.getTime()).toBe(later.getTime());
+    expect((await job(first.jobId))!.state).toBe('cancelled');
+
+    await call(u, 'POST', `/api/tasks/${t.id}/complete`);
+    expect(await deadlineNotice(t.id)).toBeNull();
+    expect((await job(moved.jobId))!.state).toBe('cancelled');
+
+    const undated = await createTask(u, { title: 'Someday', priority: 'LOW' });
+    expect(await deadlineNotice(undated.id)).toBeNull();
+  });
+
+  it('is kept when the task is snoozed', async () => {
+    const u = await signUp(app);
+    const t = await createTask(u, { title: 'A', dueAt: iso(inMinutes(600)) });
+    const notice = (await deadlineNotice(t.id))!;
+    await call(u, 'POST', `/api/tasks/${t.id}/snooze`, { option: '10m' });
+    await call(u, 'POST', `/api/tasks/${t.id}/snooze`, { option: '1h' });
+    expect((await deadlineNotice(t.id))!.jobId).toBe(notice.jobId);
+  });
+
+  it('is added at startup to open tasks that predate it', async () => {
+    const u = await signUp(app);
+    const due = inMinutes(600);
+    const old = await prisma.task.create({ data: { userId: u.id, title: 'Old', dueAt: due } });
+    const overdue = await prisma.task.create({
+      data: { userId: u.id, title: 'Overdue', dueAt: inMinutes(-120) },
+    });
+
+    expect(await addMissingDeadlineReminders()).toBe(2);
+    expect((await deadlineNotice(old.id))!.remindAt.getTime()).toBe(due.getTime());
+    // Already past its deadline: not sent late.
+    expect(await deadlineNotice(overdue.id)).toBeNull();
+  });
+
+  it('is delivered as "deadline passed" on every channel', async () => {
+    const u = await signUp(app, { timezone: 'Asia/Tokyo' });
+    const task = await prisma.task.create({
+      data: { userId: u.id, title: 'Pay rent', dueAt: new Date('2030-01-15T03:30:00Z') },
+    });
+    const notice = await prisma.taskReminder.create({
+      data: { taskId: task.id, deadline: true, remindAt: inMinutes(-1) },
+    });
+    const data: ReminderJobData = { reminderId: notice.id, remindAt: iso(notice.remindAt) };
+    const emitted: ReminderPayload[] = [];
+    setRealtimeEmitter((_userId, payload) => emitted.push(payload));
+
+    expect(await handleReminder(data)).toBe('sent');
+    expect(emitted).toEqual([expect.objectContaining({ kind: 'deadline', title: 'Pay rent' })]);
+
+    await deliverEmail(data);
+    expect(outbox[0]).toMatchObject({ to: u.email, subject: 'Deadline passed: Pay rent' });
+    expect(outbox[0]!.text).toContain('DEADLINE PASSED');
+    expect(outbox[0]!.text).toContain('Due: Tue 15 Jan, 12:30');
+    expect(outbox[0]!.html).toContain('the deadline for this task has passed');
+  });
+});
+
 describe('handleReminder', () => {
   it('delivers in-app and queues push (per subscription) and email', async () => {
     const u = await signUp(app, { timezone: 'Europe/London' });
@@ -261,7 +365,10 @@ describe('handleReminder', () => {
 
     expect(await handleReminder(data)).toBe('sent');
     expect(emitted).toEqual([
-      [u.id, expect.objectContaining({ taskId: task.id, title: 'Call the dentist' })],
+      [
+        u.id,
+        expect.objectContaining({ kind: 'reminder', taskId: task.id, title: 'Call the dentist' }),
+      ],
     ]);
     expect(await queued(QUEUES.push)).toHaveLength(2);
     expect(await queued(QUEUES.email)).toHaveLength(1);

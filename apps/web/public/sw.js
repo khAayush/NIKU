@@ -120,7 +120,14 @@ self.addEventListener('push', (event) => {
       if (data.inApp && windows.some((w) => w.focused && w.visibilityState === 'visible')) return;
 
       await self.registration.showNotification(data.title || 'Reminder', {
-        body: data.dueLabel ? `Reminder · due ${data.dueLabel}` : 'Reminder',
+        body:
+          data.kind === 'deadline'
+            ? data.dueLabel
+              ? `Deadline passed · was due ${data.dueLabel}`
+              : 'Deadline passed'
+            : data.dueLabel
+              ? `Reminder · due ${data.dueLabel}`
+              : 'Reminder',
         tag: data.taskId,
         renotify: true,
         icon: '/icons/icon-192.png',
