@@ -1,10 +1,12 @@
 import {
   CHECKLIST_ITEM_MAX,
   CHECKLIST_TITLE_MAX,
+  isChecklistComplete,
+  sortChecklists,
   type Checklist,
   type ChecklistItem,
 } from '@todo/shared';
-import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import {
   useAddChecklistItem,
   useChecklists,
@@ -56,6 +58,63 @@ function TrashIcon() {
   );
 }
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+      className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform duration-200 ${open ? '' : '-rotate-90'}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 7.5l5 5 5-5" />
+    </svg>
+  );
+}
+
+// Which checklists are expanded, remembered on this device (a convenience, so storage may fail).
+const OPEN_KEY = 'checklists.open';
+function readOpenState(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(OPEN_KEY) ?? '{}') as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Expanded/collapsed per checklist. Until the user chooses, incomplete checklists are open and
+ * completed ones are collapsed.
+ */
+function useExpanded() {
+  const [chosen, setChosen] = useState(readOpenState);
+  const isOpen = useCallback((c: Checklist) => chosen[c.id] ?? !isChecklistComplete(c), [chosen]);
+  const toggle = useCallback(
+    (c: Checklist) =>
+      setChosen((prev) => {
+        const next = { ...prev, [c.id]: !(prev[c.id] ?? !isChecklistComplete(c)) };
+        try {
+          localStorage.setItem(OPEN_KEY, JSON.stringify(next));
+        } catch {
+          // not saved: fine, it just won't be remembered
+        }
+        return next;
+      }),
+    [],
+  );
+  return { isOpen, toggle };
+}
+
+/** Lower-case, accent-free text for searching. */
+const fold = (s: string) =>
+  s
+    .toLocaleLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+
 const iconButton =
   'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-950';
 
@@ -64,6 +123,38 @@ export function ChecklistsPage() {
   const [creating, setCreating] = useState(false);
   // The checklist just created: its "add item" field gets focus.
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const { isOpen, toggle } = useExpanded();
+
+  const query = fold(search.trim());
+  const { active, completed, matchedItems } = useMemo(() => {
+    // Ticking the last item moves a checklist down straight away (same order as the server).
+    const sorted = sortChecklists(data ?? []);
+    // Checklists whose items (not just the title) match are opened to show them.
+    const matchedItems = new Set<string>();
+    const shown = query
+      ? sorted.filter((c) => {
+          const inItems = c.items.some((i) => fold(i.text).includes(query));
+          if (inItems) matchedItems.add(c.id);
+          return inItems || fold(c.title).includes(query);
+        })
+      : sorted;
+    return {
+      active: shown.filter((c) => !isChecklistComplete(c)),
+      completed: shown.filter(isChecklistComplete),
+      matchedItems,
+    };
+  }, [data, query]);
+
+  const card = (c: Checklist) => (
+    <ChecklistCard
+      key={c.id}
+      checklist={c}
+      open={matchedItems.has(c.id) || c.id === focusId || isOpen(c)}
+      onToggle={() => toggle(c)}
+      autoFocusAdd={c.id === focusId}
+    />
+  );
 
   return (
     <>
@@ -89,11 +180,49 @@ export function ChecklistsPage() {
           </EmptyState>
         )
       ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          {data.map((c) => (
-            <ChecklistCard key={c.id} checklist={c} autoFocusAdd={c.id === focusId} />
-          ))}
-        </div>
+        <>
+          <div className="relative mb-6 max-w-md">
+            <svg
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-neutral-400"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
+              <circle cx="9" cy="9" r="5.5" />
+              <path d="M13 13l3.5 3.5" strokeLinecap="round" />
+            </svg>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setSearch('')}
+              placeholder="Search checklists and items"
+              aria-label="Search checklists and items"
+              className={`${fieldClass} pl-10`}
+            />
+          </div>
+
+          {!active.length && !completed.length ? (
+            <EmptyState kind="no-results">No checklists match "{search.trim()}".</EmptyState>
+          ) : (
+            <div className="space-y-8">
+              {active.length > 0 && (
+                <div className="grid items-start gap-4 lg:grid-cols-2">{active.map(card)}</div>
+              )}
+              {completed.length > 0 && (
+                <section aria-label="Completed checklists">
+                  <h2 className="mb-3 flex items-center gap-2 text-[11px] font-medium tracking-[0.15em] text-neutral-400 uppercase">
+                    Completed
+                    <span className="tabular-nums">{completed.length}</span>
+                  </h2>
+                  <div className="grid items-start gap-4 lg:grid-cols-2">{completed.map(card)}</div>
+                </section>
+              )}
+            </div>
+          )}
+        </>
       )}
     </>
   );
@@ -148,14 +277,20 @@ function NewChecklistForm({ onDone }: { onDone: (created: Checklist | null) => v
 
 function ChecklistCard({
   checklist,
+  open,
+  onToggle,
   autoFocusAdd,
 }: {
   checklist: Checklist;
+  open: boolean;
+  onToggle: () => void;
   autoFocusAdd: boolean;
 }) {
   const [mode, setMode] = useState<'view' | 'rename' | 'delete'>('view');
   const done = checklist.items.filter((i) => i.done).length;
   const total = checklist.items.length;
+  const complete = isChecklistComplete(checklist);
+  const bodyId = `checklist-${checklist.id}`;
 
   return (
     <section
@@ -168,11 +303,29 @@ function ChecklistCard({
         ) : (
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg leading-snug font-semibold tracking-tight text-neutral-950">
-                {checklist.title}
+              {/* The title opens and closes the checklist. */}
+              <h2
+                className={`text-lg leading-snug font-semibold tracking-tight ${complete ? 'text-neutral-500' : 'text-neutral-950'}`}
+              >
+                <button
+                  type="button"
+                  onClick={onToggle}
+                  aria-expanded={open}
+                  aria-controls={bodyId}
+                  className="-ml-1 flex w-full items-start gap-2 rounded-lg pl-1 text-left"
+                >
+                  <span className="mt-1.5">
+                    <ChevronIcon open={open} />
+                  </span>
+                  <span className="min-w-0 flex-1">{checklist.title}</span>
+                </button>
               </h2>
-              <p className="mt-0.5 text-xs text-neutral-500 tabular-nums">
-                {total ? `${done} of ${total} done` : 'No items yet'}
+              <p className="mt-0.5 pl-6 text-xs text-neutral-500 tabular-nums">
+                {!total
+                  ? 'No items yet'
+                  : complete
+                    ? `All ${total} done`
+                    : `${done} of ${total} done`}
               </p>
             </div>
             <button
@@ -213,14 +366,18 @@ function ChecklistCard({
         )}
       </header>
 
-      {total > 0 && (
-        <ul className="divide-y divide-neutral-100 border-t border-neutral-100">
-          {checklist.items.map((item) => (
-            <ItemRow key={item.id} checklistId={checklist.id} item={item} />
-          ))}
-        </ul>
+      {open && (
+        <div id={bodyId}>
+          {total > 0 && (
+            <ul className="divide-y divide-neutral-100 border-t border-neutral-100">
+              {checklist.items.map((item) => (
+                <ItemRow key={item.id} checklistId={checklist.id} item={item} />
+              ))}
+            </ul>
+          )}
+          <AddItemForm checklistId={checklist.id} autoFocus={autoFocusAdd} />
+        </div>
       )}
-      <AddItemForm checklistId={checklist.id} autoFocus={autoFocusAdd} />
     </section>
   );
 }

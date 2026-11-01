@@ -1,4 +1,9 @@
-import { CHECKLIST_ITEMS_LIMIT, type Checklist, type ChecklistItem } from '@todo/shared';
+import {
+  CHECKLIST_ITEMS_LIMIT,
+  sortChecklists,
+  type Checklist,
+  type ChecklistItem,
+} from '@todo/shared';
 import { AppError, notFound } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 
@@ -34,14 +39,10 @@ async function assertOwn(userId: string, id: string) {
   if (!found) throw notFound(NOT_FOUND);
 }
 
-/** The user's checklists with their items, newest first. */
+/** The user's checklists with their items: incomplete first, then completed; newest first in each. */
 export async function listChecklists(userId: string): Promise<Checklist[]> {
-  const rows = await prisma.checklist.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-    include: withItems,
-  });
-  return rows.map(toChecklist);
+  const rows = await prisma.checklist.findMany({ where: { userId }, include: withItems });
+  return sortChecklists(rows.map(toChecklist));
 }
 
 export async function createChecklist(userId: string, title: string): Promise<Checklist> {

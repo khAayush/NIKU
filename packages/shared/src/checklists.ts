@@ -40,3 +40,20 @@ export const updateChecklistItemSchema = z
   .partial()
   .refine((v) => v.text !== undefined || v.done !== undefined, 'Nothing to change');
 export type UpdateChecklistItemInput = z.infer<typeof updateChecklistItemSchema>;
+
+/** A checklist is complete once it has items and every one is checked. */
+export function isChecklistComplete(checklist: Pick<Checklist, 'items'>): boolean {
+  return checklist.items.length > 0 && checklist.items.every((i) => i.done);
+}
+
+/**
+ * The order checklists are shown in: incomplete ones first, completed ones after; newest first
+ * within each group. Returns a new array.
+ */
+export function sortChecklists<T extends Pick<Checklist, 'items' | 'createdAt'>>(list: T[]): T[] {
+  return [...list].sort(
+    (a, b) =>
+      Number(isChecklistComplete(a)) - Number(isChecklistComplete(b)) ||
+      b.createdAt.localeCompare(a.createdAt),
+  );
+}

@@ -76,6 +76,22 @@ describe('checklists', () => {
     expect((await all(u))[0]!.items.map((i) => i.text)).toEqual(['Milk', 'Bread', 'Butter']);
   });
 
+  it('lists incomplete checklists first and completed ones after', async () => {
+    const u = await signUp(app);
+    const shopping = await create(u, 'Shopping');
+    const milk = (await addItem(u, shopping.id, 'Milk')).json();
+    await create(u, 'Empty');
+    const trip = await create(u, 'Trip');
+    await addItem(u, trip.id, 'Passport');
+    expect((await all(u)).map((c) => c.title)).toEqual(['Trip', 'Empty', 'Shopping']);
+
+    // Ticking Shopping's only item completes it: it moves below the others.
+    await call(u, 'PATCH', `/api/checklists/${shopping.id}/items/${milk.id}`, { done: true });
+    const tripItem = (await all(u)).find((c) => c.id === trip.id)!.items[0]!;
+    await call(u, 'PATCH', `/api/checklists/${trip.id}/items/${tripItem.id}`, { done: true });
+    expect((await all(u)).map((c) => c.title)).toEqual(['Empty', 'Trip', 'Shopping']);
+  });
+
   it('renames, and deletes a checklist with its items', async () => {
     const u = await signUp(app);
     const c = await create(u, 'Trip');

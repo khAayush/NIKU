@@ -205,17 +205,19 @@ Simple checklists: a title and items to tick off (no due dates or reminders). A 
 }
 ```
 
-Items are in the order they were added; checked items stay in place.
+Checklists are ordered incomplete first, then completed (has items and all are checked); newest
+first within each group (`sortChecklists` in `@todo/shared`). Items are in the order they were
+added; checked items stay in place.
 
-| Method & path                              | Body                                        | Success                                     | Errors                                                       |
-| ------------------------------------------ | ------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------ |
-| `GET /api/checklists`                      | —                                           | **200** `{ "items": [...] }` (newest first) |                                                              |
-| `POST /api/checklists`                     | `{ "title": "Groceries" }`                  | **201** the checklist                       | 400 `VALIDATION_ERROR` (1–100 chars)                         |
-| `PATCH /api/checklists/:id`                | `{ "title": "Weekly shop" }`                | **200** the checklist                       | 400, 404 `NOT_FOUND`                                         |
-| `DELETE /api/checklists/:id`               | —                                           | **204** (deletes its items too)             | 404                                                          |
-| `POST /api/checklists/:id/items`           | `{ "text": "Milk" }`                        | **201** the item (added last)               | 400 (1–200 chars), 404, 409 `CHECKLIST_FULL` (200 items max) |
-| `PATCH /api/checklists/:id/items/:itemId`  | `{ "done": true }` and/or `{ "text": "…" }` | **200** the item                            | 400 (empty body), 404                                        |
-| `DELETE /api/checklists/:id/items/:itemId` | —                                           | **204**                                     | 404                                                          |
+| Method & path                              | Body                                        | Success                                        | Errors                                                       |
+| ------------------------------------------ | ------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------ |
+| `GET /api/checklists`                      | —                                           | **200** `{ "items": [...] }` (see order above) |                                                              |
+| `POST /api/checklists`                     | `{ "title": "Groceries" }`                  | **201** the checklist                          | 400 `VALIDATION_ERROR` (1–100 chars)                         |
+| `PATCH /api/checklists/:id`                | `{ "title": "Weekly shop" }`                | **200** the checklist                          | 400, 404 `NOT_FOUND`                                         |
+| `DELETE /api/checklists/:id`               | —                                           | **204** (deletes its items too)                | 404                                                          |
+| `POST /api/checklists/:id/items`           | `{ "text": "Milk" }`                        | **201** the item (added last)                  | 400 (1–200 chars), 404, 409 `CHECKLIST_FULL` (200 items max) |
+| `PATCH /api/checklists/:id/items/:itemId`  | `{ "done": true }` and/or `{ "text": "…" }` | **200** the item                               | 400 (empty body), 404                                        |
+| `DELETE /api/checklists/:id/items/:itemId` | —                                           | **204**                                        | 404                                                          |
 
 ---
 
