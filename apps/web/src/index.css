@@ -24,3 +24,8 @@
     @apply outline-2 outline-offset-2 outline-neutral-900;
   }
 }
+
+/* Edge's own password reveal button: our password fields have their own. */
+input::-ms-reveal {
+  display: none;
+}

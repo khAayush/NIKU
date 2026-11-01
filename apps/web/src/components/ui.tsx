@@ -4,7 +4,7 @@ import type {
   ReactNode,
   SelectHTMLAttributes,
 } from 'react';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import type { ZodType } from 'zod';
 import { ApiRequestError } from '../api/client';
 
@@ -17,19 +17,68 @@ export const inputClass =
 
 const labelClass = 'block text-[13px] font-medium text-neutral-800';
 
+function EyeIcon({ crossed }: { crossed: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-[18px] w-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+      {crossed && <path d="M4 20 20 4" />}
+    </svg>
+  );
+}
+
+/** Text input with a label. Password inputs get a button to show or hide what's typed. */
 export function Field({
   label,
   error,
   hint,
+  type,
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; hint?: string }) {
   const id = useId();
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = type === 'password';
+  const input = (
+    <input
+      id={id}
+      type={isPassword && revealed ? 'text' : type}
+      aria-invalid={error ? true : undefined}
+      className={isPassword ? `${inputClass} pr-12` : inputClass}
+      {...props}
+    />
+  );
   return (
     <div>
       <label htmlFor={id} className={labelClass}>
         {label}
       </label>
-      <input id={id} aria-invalid={error ? true : undefined} className={inputClass} {...props} />
+      {isPassword ? (
+        <div className="relative">
+          {input}
+          <button
+            type="button"
+            onClick={() => setRevealed((r) => !r)}
+            aria-label={revealed ? 'Hide password' : 'Show password'}
+            aria-pressed={revealed}
+            aria-controls={id}
+            disabled={props.disabled}
+            className="absolute right-1.5 bottom-[5px] flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-950 disabled:pointer-events-none"
+          >
+            <EyeIcon crossed={revealed} />
+          </button>
+        </div>
+      ) : (
+        input
+      )}
       {error ? (
         <p className="mt-1.5 text-xs text-rose-600">{error}</p>
       ) : hint ? (
