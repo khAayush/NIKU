@@ -103,7 +103,7 @@ export function TaskItem({
             </span>
           )}
           {listName && (
-            <span className="rounded-full border border-neutral-200 px-2 py-px text-neutral-600">
+            <span className="max-w-full min-w-0 truncate rounded-full border border-neutral-200 px-2 py-px text-neutral-600">
               {listName}
             </span>
           )}

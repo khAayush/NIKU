@@ -83,7 +83,7 @@ export function AllTasksPage() {
           value={listFilter}
           onChange={(e) => update('list', e.target.value)}
           aria-label="Filter by list"
-          className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm"
+          className="max-w-full min-w-0 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm"
         >
           <option value="">All lists</option>
           <option value="none">No list</option>

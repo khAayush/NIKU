@@ -14,6 +14,8 @@
 
   body {
     @apply bg-white text-neutral-900;
+    /* Long words and URLs (e.g. in task titles) wrap instead of widening the page. */
+    overflow-wrap: break-word;
   }
 
   ::selection {
@@ -28,4 +30,17 @@
 /* Edge's own password reveal button: our password fields have their own. */
 input::-ms-reveal {
   display: none;
+}
+
+/*
+ * iPhone/iPad Safari zooms the whole page into any text field under 16px and stays zoomed,
+ * which pushes the layout past the screen edges. Phones and touch screens get 16px fields.
+ * (Outside @layer on purpose, so it beats the text-sm utilities.)
+ */
+@media (max-width: 767px), (pointer: coarse) {
+  input:not([type='checkbox'], [type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

@@ -202,7 +202,8 @@ export function TaskForm({
         maxLength={200}
         autoFocus
       />
-      <div className="grid grid-cols-2 gap-3">
+      {/* Side by side from tablet width; stacked on phones, where the pickers need the room. */}
+      <div className="grid gap-3 sm:grid-cols-2">
         <Field
           label="Due date"
           type="date"

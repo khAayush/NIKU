@@ -204,7 +204,7 @@ function DayPanel({ date, tz, isPast }: { date: string; tz: string; isPast: bool
   const d = DateTime.fromFormat(date, DATE_FORMAT, { zone: tz });
 
   return (
-    <aside className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-6 xl:sticky xl:top-12 xl:w-96 xl:shrink-0">
+    <aside className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-4 sm:p-6 xl:sticky xl:top-12 xl:w-96 xl:shrink-0">
       <div className="mb-6 flex items-start justify-between gap-2">
         <div>
           <p className="text-[11px] font-medium tracking-[0.15em] text-neutral-400 uppercase">

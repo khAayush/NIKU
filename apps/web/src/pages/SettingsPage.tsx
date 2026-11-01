@@ -39,7 +39,7 @@ export function SettingsPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-7">
+    <section className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-7">
       <h2 className="mb-5 text-lg font-semibold tracking-tight text-neutral-950">{title}</h2>
       {children}
     </section>

@@ -33,7 +33,7 @@ export function ListsPage() {
       <PageHeader title="Lists" subtitle="Group tasks, e.g. Work or Personal" />
       <form onSubmit={onCreate} className="mb-6 flex max-w-md gap-2" noValidate>
         <input
-          className={`${inputClass} flex-1`}
+          className={`${inputClass} min-w-0 flex-1`}
           placeholder="New list name"
           aria-label="New list name"
           value={name}
@@ -87,9 +87,10 @@ function ListRow({ list }: { list: List }) {
   return (
     <li className="px-4 py-3">
       {mode === 'rename' ? (
-        <form onSubmit={onRename} className="flex gap-2" noValidate>
+        <form onSubmit={onRename} className="flex flex-wrap gap-2" noValidate>
+          {/* Full width on phones, with the buttons below. */}
           <input
-            className={`${inputClass} flex-1`}
+            className={`${inputClass} min-w-0 flex-1 basis-full sm:basis-0`}
             value={name}
             maxLength={LIST_NAME_MAX}
             onChange={(e) => setName(e.target.value)}
@@ -105,7 +106,7 @@ function ListRow({ list }: { list: List }) {
         </form>
       ) : mode === 'delete' ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="flex-1">
+          <span className="min-w-0 flex-1 basis-full sm:basis-0">
             Delete "{list.name}"? Its tasks will be kept, with no list.
           </span>
           <Button
@@ -123,7 +124,7 @@ function ListRow({ list }: { list: List }) {
         <div className="flex items-center gap-3">
           <Link
             to={`/all?list=${list.id}`}
-            className="flex-1 text-sm font-medium text-neutral-800 hover:text-neutral-950"
+            className="min-w-0 flex-1 text-sm font-medium text-neutral-800 hover:text-neutral-950"
           >
             {list.name}
           </Link>
