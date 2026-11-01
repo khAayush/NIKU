@@ -92,6 +92,27 @@ describe('checklists', () => {
     expect((await all(u)).map((c) => c.title)).toEqual(['Empty', 'Trip', 'Shopping']);
   });
 
+  it('accepts a client-chosen item id, and treats a repeat as the same item', async () => {
+    const u = await signUp(app);
+    const c = await create(u, 'Offline');
+    const id = crypto.randomUUID();
+    const first = await call(u, 'POST', `/api/checklists/${c.id}/items`, { id, text: 'Milk' });
+    expect(first.statusCode).toBe(201);
+    expect(first.json()).toEqual({ id, text: 'Milk', done: false });
+
+    const again = await call(u, 'POST', `/api/checklists/${c.id}/items`, { id, text: 'Milk' });
+    expect(again.json()).toEqual({ id, text: 'Milk', done: false });
+    expect((await all(u))[0]!.items).toHaveLength(1);
+
+    // The same id can't be used in another checklist (or by someone else).
+    const other = await create(u, 'Other');
+    const clash = await call(u, 'POST', `/api/checklists/${other.id}/items`, { id, text: 'X' });
+    expect(clash.statusCode).toBe(409);
+    expect(clash.json().error.code).toBe('ID_TAKEN');
+    const bad = await call(u, 'POST', `/api/checklists/${c.id}/items`, { id: 'nope', text: 'X' });
+    expect(bad.statusCode).toBe(400);
+  });
+
   it('renames, and deletes a checklist with its items', async () => {
     const u = await signUp(app);
     const c = await create(u, 'Trip');

@@ -67,9 +67,24 @@ export async function deleteChecklist(userId: string, id: string): Promise<void>
   if (count === 0) throw notFound(NOT_FOUND);
 }
 
-/** Adds an item at the end of the checklist. */
-export async function addItem(userId: string, checklistId: string, text: string) {
+/**
+ * Adds an item at the end of the checklist. With a client-chosen `id`, sending the same item
+ * twice (e.g. a retry after a dropped connection) returns the existing item instead.
+ */
+export async function addItem(userId: string, checklistId: string, text: string, id?: string) {
   await assertOwn(userId, checklistId);
+  if (id) {
+    const existing = await prisma.checklistItem.findUnique({
+      where: { id },
+      select: { id: true, text: true, done: true, checklistId: true },
+    });
+    if (existing) {
+      if (existing.checklistId !== checklistId) {
+        throw new AppError(409, 'ID_TAKEN', 'That item id is already in use');
+      }
+      return { id: existing.id, text: existing.text, done: existing.done };
+    }
+  }
   const { _count, _max } = await prisma.checklistItem.aggregate({
     where: { checklistId },
     _count: true,
@@ -84,7 +99,7 @@ export async function addItem(userId: string, checklistId: string, text: string)
   }
   const [item] = await prisma.$transaction([
     prisma.checklistItem.create({
-      data: { checklistId, text, position: (_max.position ?? -1) + 1 },
+      data: { id, checklistId, text, position: (_max.position ?? -1) + 1 },
       select: { id: true, text: true, done: true },
     }),
     // Keeps "recently changed" meaningful.

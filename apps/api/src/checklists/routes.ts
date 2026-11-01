@@ -50,8 +50,8 @@ export async function checklistRoutes(app: FastifyInstance) {
 
   app.post('/checklists/:id/items', async (request, reply) => {
     const id = parseId(request.params, 'Checklist not found');
-    const { text } = createChecklistItemSchema.parse(request.body);
-    return reply.status(201).send(await addItem(currentUser(request).id, id, text));
+    const { text, id: itemId } = createChecklistItemSchema.parse(request.body);
+    return reply.status(201).send(await addItem(currentUser(request).id, id, text, itemId));
   });
 
   app.patch('/checklists/:id/items/:itemId', async (request) => {

@@ -1,13 +1,14 @@
-import type {
-  Checklist,
-  ChecklistItem,
-  CreateChecklistItemInput,
-  UpdateChecklistItemInput,
-} from '@todo/shared';
+import type { Checklist, ChecklistItem } from '@todo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  CHECKLISTS_KEY,
+  OFFLINE,
+  type AddChecklistItemVars,
+  type UpdateChecklistItemVars,
+} from '../lib/queryClient';
 import { api } from './client';
 
-export const CHECKLISTS_KEY = ['checklists'] as const;
+export { CHECKLISTS_KEY };
 
 const json = (method: string, body?: unknown): RequestInit => ({
   method,
@@ -60,46 +61,17 @@ export function useDeleteChecklist() {
   });
 }
 
-export function useAddChecklistItem() {
-  const updateCache = useUpdateCache();
-  return useMutation({
-    mutationFn: ({ id, text }: { id: string } & CreateChecklistItemInput) =>
-      api<ChecklistItem>(`/checklists/${id}/items`, json('POST', { text })),
-    onSuccess: (item, { id }) => updateCache(id, (c) => ({ ...c, items: [...c.items, item] })),
+/** Adds an item (works offline: shown at once, sent when back online). */
+export const useAddChecklistItem = () =>
+  useMutation<ChecklistItem, Error, AddChecklistItemVars>({
+    mutationKey: OFFLINE.addChecklistItem,
   });
-}
 
-/**
- * Checks/unchecks or edits an item. The change shows at once and is rolled back if saving fails.
- */
-export function useUpdateChecklistItem() {
-  const queryClient = useQueryClient();
-  const updateCache = useUpdateCache();
-  const patchItem = (id: string, itemId: string, change: Partial<ChecklistItem>) =>
-    updateCache(id, (c) => ({
-      ...c,
-      items: c.items.map((i) => (i.id === itemId ? { ...i, ...change } : i)),
-    }));
-
-  return useMutation({
-    mutationFn: ({
-      id,
-      itemId,
-      ...input
-    }: { id: string; itemId: string } & UpdateChecklistItemInput) =>
-      api<ChecklistItem>(`/checklists/${id}/items/${itemId}`, json('PATCH', input)),
-    onMutate: async ({ id, itemId, ...input }) => {
-      await queryClient.cancelQueries({ queryKey: CHECKLISTS_KEY });
-      const before = queryClient.getQueryData<Checklist[]>(CHECKLISTS_KEY);
-      patchItem(id, itemId, input);
-      return { before };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.before) queryClient.setQueryData(CHECKLISTS_KEY, context.before);
-    },
-    onSuccess: (item, { id }) => patchItem(id, item.id, item),
+/** Checks/unchecks or edits an item (works offline: shown at once, sent when back online). */
+export const useUpdateChecklistItem = () =>
+  useMutation<ChecklistItem, Error, UpdateChecklistItemVars>({
+    mutationKey: OFFLINE.updateChecklistItem,
   });
-}
 
 export function useDeleteChecklistItem() {
   const updateCache = useUpdateCache();

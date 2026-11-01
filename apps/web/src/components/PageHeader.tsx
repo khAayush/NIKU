@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useOnline } from '../lib/pwa';
 import { Button } from './ui';
 
 export function PageHeader({
@@ -37,6 +38,20 @@ export function EmptyMessage({ children }: { children: ReactNode }) {
     <p className="rounded-2xl border border-dashed border-neutral-200 px-4 py-12 text-center text-sm text-neutral-500">
       {children}
     </p>
+  );
+}
+
+/**
+ * Shown while a page's data is loading: nothing online (it's quick), or a note offline when this
+ * page was never loaded on this device.
+ */
+export function Pending() {
+  const online = useOnline();
+  if (online) return null;
+  return (
+    <EmptyMessage>
+      This page hasn't been saved on this device yet. Open it once while online to see it offline.
+    </EmptyMessage>
   );
 }
 

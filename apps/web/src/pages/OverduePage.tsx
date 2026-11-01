@@ -1,6 +1,6 @@
 import { useOverdue } from '../api/tasks';
 import { EmptyState } from '../components/EmptyState';
-import { LoadError, PageHeader } from '../components/PageHeader';
+import { LoadError, PageHeader, Pending } from '../components/PageHeader';
 import { TaskSection } from '../components/TaskItem';
 import { useTaskEditor } from '../hooks/useTaskEditor';
 
@@ -11,7 +11,9 @@ export function OverduePage() {
   return (
     <>
       <PageHeader title="Overdue" subtitle="Incomplete tasks past their due date" />
-      {isPending ? null : isError ? (
+      {isPending ? (
+        <Pending />
+      ) : isError && !data ? (
         <LoadError />
       ) : !data.length ? (
         <EmptyState kind="caught-up" />

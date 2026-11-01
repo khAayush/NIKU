@@ -1,6 +1,5 @@
 import type {
   CalendarResponse,
-  CompleteTaskResponse,
   SnoozeOption,
   CreateTaskInput,
   List,
@@ -11,6 +10,7 @@ import type {
   UpdateTaskInput,
 } from '@todo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LISTS_KEY, OFFLINE, TASKS_KEY, type TaskDoneVars } from '../lib/queryClient';
 import { api } from './client';
 
 const json = (method: string, body?: unknown): RequestInit => ({
@@ -20,8 +20,7 @@ const json = (method: string, body?: unknown): RequestInit => ({
 
 // ---- Tasks ----
 
-export const TASKS_KEY = ['tasks'] as const;
-export const LISTS_KEY = ['lists'] as const;
+export { LISTS_KEY, TASKS_KEY };
 
 export function useToday() {
   return useQuery({
@@ -85,12 +84,9 @@ export const useUpdateTask = () =>
 export const useDeleteTask = () =>
   useTaskMutation((id: string) => api<void>(`/tasks/${id}`, json('DELETE')));
 
+/** Marks a task done or not done. Works offline: shown at once, sent when back online. */
 export const useSetTaskDone = () =>
-  useTaskMutation(({ id, done }: { id: string; done: boolean }): Promise<unknown> =>
-    done
-      ? api<CompleteTaskResponse>(`/tasks/${id}/complete`, json('POST'))
-      : api<Task>(`/tasks/${id}/reopen`, json('POST')),
-  );
+  useMutation<unknown, Error, TaskDoneVars>({ mutationKey: OFFLINE.taskDone });
 
 export const useSnoozeTask = () =>
   useTaskMutation(({ id, option }: { id: string; option: SnoozeOption }) =>

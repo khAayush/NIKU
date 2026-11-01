@@ -1,10 +1,10 @@
 import { PASSWORD_MIN_LENGTH, resetPasswordSchema } from '@todo/shared';
-import { useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ME_KEY, resetPassword } from '../api/auth';
+import { resetPassword } from '../api/auth';
 import { ApiRequestError } from '../api/client';
 import { AuthLayout } from '../components/AuthLayout';
+import { signedOut } from '../lib/queryClient';
 import { Alert, Button, Field, errorMessage, validate } from '../components/ui';
 
 export function ResetPasswordPage() {
@@ -14,7 +14,6 @@ export function ResetPasswordPage() {
   const [formError, setFormError] = useState('');
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
-  const queryClient = useQueryClient();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -26,7 +25,7 @@ export function ResetPasswordPage() {
     try {
       await resetPassword(data);
       // Every session was signed out by the reset, including this browser's.
-      queryClient.setQueryData(ME_KEY, null);
+      await signedOut();
       setDone(true);
     } catch (err) {
       setFormError(

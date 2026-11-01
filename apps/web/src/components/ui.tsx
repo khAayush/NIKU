@@ -6,7 +6,7 @@ import type {
 } from 'react';
 import { useId, useState } from 'react';
 import type { ZodType } from 'zod';
-import { ApiRequestError } from '../api/client';
+import { ApiRequestError, OfflineError } from '../api/client';
 
 /** Shared look for text inputs and selects: hairline border, black focus, soft halo. */
 export const inputClass =
@@ -176,6 +176,7 @@ export function validate<T>(schema: ZodType<T>, values: unknown) {
 
 /** A user-facing message for a failed request. */
 export function errorMessage(err: unknown) {
+  if (err instanceof OfflineError) return err.message;
   if (err instanceof ApiRequestError) {
     if (err.status === 429) return 'Too many attempts. Please wait a while and try again.';
     return err.message;

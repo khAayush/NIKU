@@ -1,10 +1,10 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
-import { ME_KEY, signOut, useMe } from '../api/auth';
+import { signOut, useMe } from '../api/auth';
 import { useLists } from '../api/tasks';
 import { APP_NAME } from '../lib/app-name';
-import { isStandalone } from '../lib/pwa';
+import { isStandalone, useOnline } from '../lib/pwa';
+import { signedOut } from '../lib/queryClient';
 import { OfflineBanner } from './OfflineScreen';
 import { QuickAdd } from './QuickAdd';
 import { ReminderToasts } from './ReminderToasts';
@@ -50,7 +50,7 @@ function MenuIcon({ open }: { open: boolean }) {
 export function Layout() {
   const { data: me } = useMe();
   const { data: lists = [] } = useLists();
-  const queryClient = useQueryClient();
+  const online = useOnline();
   const navigate = useNavigate();
   const location = useLocation();
   const activeList =
@@ -85,8 +85,8 @@ export function Layout() {
     try {
       await signOut();
     } finally {
-      queryClient.clear();
-      queryClient.setQueryData(ME_KEY, null);
+      // Also removes the copy saved on this device for offline use.
+      await signedOut();
       navigate('/login', { replace: true });
     }
   }
@@ -223,7 +223,13 @@ export function Layout() {
           </span>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium text-neutral-950">{me?.name}</div>
-            <button onClick={onSignOut} className="text-xs text-neutral-500 hover:text-neutral-950">
+            {/* Offline, the server session couldn't be ended (it would sign in again later). */}
+            <button
+              onClick={onSignOut}
+              disabled={!online}
+              title={online ? undefined : 'Logging out needs an internet connection'}
+              className="text-xs text-neutral-500 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-50"
+            >
               Log out
             </button>
           </div>

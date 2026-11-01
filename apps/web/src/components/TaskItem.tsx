@@ -59,7 +59,6 @@ export function TaskItem({
     <li className="group flex items-start gap-3.5 px-4 py-3.5 transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-neutral-50">
       <RoundCheckbox
         checked={done}
-        disabled={setDone.isPending}
         onChange={() => setDone.mutate({ id: task.id, done: !done })}
         label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
       />

@@ -1,4 +1,5 @@
-import { useOnline } from '../lib/pwa';
+import { useMutationState } from '@tanstack/react-query';
+import { happenedBeforeReconnect, useOnline } from '../lib/pwa';
 import { Button } from './ui';
 
 /** Full-page message when the app can't load: offline, or the server can't be reached. */
@@ -37,16 +38,49 @@ export function OfflineScreen({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-/** Slim notice while the connection drops during use. */
+/**
+ * Changes made offline that haven't reached the server yet. Online, only those made while
+ * offline (or before the app was reopened) count, so ordinary quick saves don't flash a notice.
+ */
+function useUnsyncedCount(online: boolean) {
+  return useMutationState({
+    filters: {
+      status: 'pending',
+      predicate: (m) =>
+        m.options.mutationKey?.[0] === 'offline' &&
+        (!online || happenedBeforeReconnect(m.state.submittedAt)),
+    },
+  }).length;
+}
+
+/** Notice while offline (what still works) and while offline changes are being sent. */
 export function OfflineBanner() {
   const online = useOnline();
-  if (online) return null;
+  const unsynced = useUnsyncedCount(online);
+  const changes = `${unsynced} ${unsynced === 1 ? 'change' : 'changes'}`;
+
+  if (online) {
+    if (!unsynced) return null;
+    return (
+      <div
+        role="status"
+        className="mb-6 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm text-neutral-700"
+      >
+        Back online. Syncing {changes}…
+      </div>
+    );
+  }
   return (
     <div
       role="status"
-      className="mb-6 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm text-neutral-700"
+      className="mb-6 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm leading-relaxed text-neutral-700"
     >
-      You're offline. Nothing new will load or save until you're back online.
+      <p className="font-medium text-neutral-950">You're offline</p>
+      <p className="mt-0.5">
+        You're seeing what was saved on this device. You can still tick off tasks and checklist
+        items and add checklist items; they'll sync when you're back online.
+        {unsynced > 0 && <span className="font-medium text-neutral-950"> {changes} waiting.</span>}
+      </p>
     </div>
   );
 }

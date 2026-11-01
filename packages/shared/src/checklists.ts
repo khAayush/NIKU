@@ -29,6 +29,11 @@ export type ChecklistInput = z.infer<typeof checklistInputSchema>;
 
 export const createChecklistItemSchema = z.object({
   text: z.string().trim().min(1, 'Write something to add').max(CHECKLIST_ITEM_MAX),
+  /**
+   * Optional id chosen by the client (a UUID), so an item added offline can be sent again
+   * safely: a repeat returns the item that already exists.
+   */
+  id: z.uuid().optional(),
 });
 export type CreateChecklistItemInput = z.infer<typeof createChecklistItemSchema>;
 

@@ -17,7 +17,7 @@ import {
   useUpdateChecklistItem,
 } from '../api/checklists';
 import { EmptyState } from '../components/EmptyState';
-import { LoadError, PageHeader } from '../components/PageHeader';
+import { LoadError, PageHeader, Pending } from '../components/PageHeader';
 import { Alert, Button, RoundCheckbox, errorMessage } from '../components/ui';
 
 const fieldClass =
@@ -184,7 +184,9 @@ export function ChecklistsPage() {
         />
       )}
 
-      {isPending ? null : isError ? (
+      {isPending ? (
+        <Pending />
+      ) : isError && !data ? (
         <LoadError />
       ) : !data.length ? (
         !creating && (
@@ -473,7 +475,7 @@ function ItemRow({ checklistId, item }: { checklistId: string; item: ChecklistIt
     setEditing(false);
     const trimmed = text.trim();
     if (!trimmed || trimmed === item.text) return setText(item.text);
-    update.mutate({ id: checklistId, itemId: item.id, text: trimmed });
+    update.mutate({ checklistId, itemId: item.id, text: trimmed });
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -491,7 +493,7 @@ function ItemRow({ checklistId, item }: { checklistId: string; item: ChecklistIt
     >
       <RoundCheckbox
         checked={item.done}
-        onChange={() => update.mutate({ id: checklistId, itemId: item.id, done: !item.done })}
+        onChange={() => update.mutate({ checklistId, itemId: item.id, done: !item.done })}
         label={item.done ? `Uncheck "${item.text}"` : `Check "${item.text}"`}
       />
       {editing ? (
@@ -552,8 +554,9 @@ function AddItemForm({ checklistId, autoFocus }: { checklistId: string; autoFocu
     // Clear at once, so the next item can be typed while this one saves.
     setText('');
     input.current?.focus();
+    // The id is made here so an item added offline keeps it after syncing.
     add.mutate(
-      { id: checklistId, text: trimmed },
+      { checklistId, itemId: crypto.randomUUID(), text: trimmed },
       // Put the text back if it couldn't be saved (unless something new was typed).
       { onError: () => setText((current) => current || trimmed) },
     );

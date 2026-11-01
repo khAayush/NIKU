@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router';
 import { useMe } from '../api/auth';
 import { useCalendar, useDayTasks } from '../api/tasks';
 import { EmptyState } from '../components/EmptyState';
-import { LoadError } from '../components/PageHeader';
+import { LoadError, Pending } from '../components/PageHeader';
 import { TaskSection } from '../components/TaskItem';
 import { Button } from '../components/ui';
 import { useTaskEditor } from '../hooks/useTaskEditor';
@@ -93,7 +93,7 @@ export function CalendarPage() {
           </div>
         </div>
 
-        {isError && <LoadError />}
+        {isError && !summary && <LoadError />}
 
         <div className="grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100">
           {WEEKDAYS.map((w) => (
@@ -220,7 +220,9 @@ function DayPanel({ date, tz, isPast }: { date: string; tz: string; isPast: bool
           + Add
         </Button>
       </div>
-      {isPending ? null : isError ? (
+      {isPending ? (
+        <Pending />
+      ) : isError && !tasks ? (
         <LoadError />
       ) : tasks.length ? (
         <TaskSection tasks={tasks} onEdit={openEdit} snoozable />

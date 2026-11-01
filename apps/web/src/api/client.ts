@@ -9,8 +9,16 @@ export class ApiRequestError extends Error {
   }
 }
 
+/** Thrown instead of trying the network when the device is offline. */
+export class OfflineError extends Error {
+  constructor() {
+    super("You're offline. This needs an internet connection.");
+  }
+}
+
 /** Thin JSON fetch wrapper for the API. Cookies are sent automatically (same origin). */
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (!navigator.onLine) throw new OfflineError();
   const res = await fetch(`/api${path}`, {
     ...init,
     credentials: 'include',

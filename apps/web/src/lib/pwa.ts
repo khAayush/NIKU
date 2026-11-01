@@ -100,6 +100,14 @@ export function useInstallPrompt() {
 
 // ---- Connection status ----
 
+/** When the connection last came back (or the page loaded). */
+let onlineSince = Date.now();
+window.addEventListener('online', () => {
+  onlineSince = Date.now();
+});
+/** Whether something happened before the connection last came back (i.e. while offline). */
+export const happenedBeforeReconnect = (time: number) => time <= onlineSince;
+
 function subscribeOnline(listener: () => void) {
   window.addEventListener('online', listener);
   window.addEventListener('offline', listener);

@@ -209,6 +209,10 @@ Checklists are ordered incomplete first, then completed (has items and all are c
 first within each group (`sortChecklists` in `@todo/shared`). Items are in the order they were
 added; checked items stay in place.
 
+`POST /api/checklists/:id/items` also accepts an optional client-chosen `"id"` (a UUID), so an item
+added offline can be sent again safely: if that item already exists in this checklist it is
+returned unchanged (no duplicate); if the id is used elsewhere the answer is **409** `ID_TAKEN`.
+
 | Method & path                              | Body                                        | Success                                        | Errors                                                       |
 | ------------------------------------------ | ------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------ |
 | `GET /api/checklists`                      | —                                           | **200** `{ "items": [...] }` (see order above) |                                                              |

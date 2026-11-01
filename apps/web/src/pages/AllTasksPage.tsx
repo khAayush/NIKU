@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useLists, useTasks } from '../api/tasks';
 import { EmptyState } from '../components/EmptyState';
-import { LoadError, PageHeader } from '../components/PageHeader';
+import { LoadError, PageHeader, Pending } from '../components/PageHeader';
 import { TaskSection } from '../components/TaskItem';
 import { useTaskEditor } from '../hooks/useTaskEditor';
 
@@ -104,7 +104,9 @@ export function AllTasksPage() {
         </label>
       </div>
 
-      {isPending ? null : isError ? (
+      {isPending ? (
+        <Pending />
+      ) : isError && !data ? (
         <LoadError />
       ) : !data.length ? (
         q ? (

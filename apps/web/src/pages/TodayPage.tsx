@@ -2,7 +2,7 @@ import { toLocalDate } from '@todo/shared';
 import { useMe } from '../api/auth';
 import { useToday } from '../api/tasks';
 import { EmptyState } from '../components/EmptyState';
-import { LoadError, PageHeader } from '../components/PageHeader';
+import { LoadError, PageHeader, Pending } from '../components/PageHeader';
 import { TaskSection } from '../components/TaskItem';
 import { useTaskEditor } from '../hooks/useTaskEditor';
 import { formatLongDate } from '../lib/format';
@@ -16,7 +16,9 @@ export function TodayPage() {
   return (
     <>
       <PageHeader title="Today" subtitle={formatLongDate(now, tz)} onAdd={openNew} />
-      {isPending ? null : isError ? (
+      {isPending ? (
+        <Pending />
+      ) : isError && !data ? (
         <LoadError />
       ) : !data.overdue.length && !data.today.length ? (
         <EmptyState kind="free" seed={toLocalDate(now, tz)} />

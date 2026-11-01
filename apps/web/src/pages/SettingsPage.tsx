@@ -8,6 +8,7 @@ import { NotificationSettings } from '../components/NotificationSettings';
 import { Alert, Button, Field, SelectField, errorMessage, validate } from '../components/ui';
 import { APP_NAME } from '../lib/app-name';
 import { isStandalone } from '../lib/pwa';
+import { signedOut } from '../lib/queryClient';
 
 export function SettingsPage() {
   const { data: me } = useMe();
@@ -123,7 +124,6 @@ function DeleteAccountSection() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   async function onSubmit(e: FormEvent) {
@@ -134,8 +134,7 @@ function DeleteAccountSection() {
     setBusy(true);
     try {
       await deleteAccount(data);
-      queryClient.clear();
-      queryClient.setQueryData(ME_KEY, null);
+      await signedOut();
       navigate('/login', { replace: true });
     } catch (err) {
       setError(errorMessage(err));
